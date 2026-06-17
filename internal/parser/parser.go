@@ -472,7 +472,7 @@ func (p *Parser) parseType() ast.TypeExpr {
 			return &ast.StringType{Base: ast.Base{P: start}}
 		case "record":
 			return p.parseRecordType()
-		case "object":
+		case "object", "class":
 			return p.parseObjectType("")
 		case "procedure", "function":
 			return p.parseProcType()
@@ -662,17 +662,39 @@ func (p *Parser) parseRecordType() ast.TypeExpr {
 
 func (p *Parser) parseObjectType(parentName string) ast.TypeExpr {
 	start := p.curPos()
-	p.advance() // object
-	o := &ast.ObjectType{Base: ast.Base{P: start}}
+	isClass := p.is("class")
+	p.advance() // object | class
+	o := &ast.ObjectType{Base: ast.Base{P: start}, IsClass: isClass}
 	if p.cur().Kind == lexer.TokLParen {
 		p.advance()
 		id := p.expect(lexer.TokIdent)
 		o.Parent = id.Text
+		// Implemented interfaces (class(TParent, IFoo, IBar)) are accepted but
+		// not yet modelled.
+		for p.match(lexer.TokComma) {
+			p.expect(lexer.TokIdent)
+		}
 		p.expect(lexer.TokRParen)
+	}
+	// `class` forward declaration: `TFoo = class;`
+	if isClass && p.cur().Kind == lexer.TokSemicolon {
+		return o
 	}
 	for {
 		if p.is("end") || p.cur().Kind == lexer.TokEOF {
 			break
+		}
+		// Visibility sections (private/public/...) are accepted and ignored.
+		if p.is("private") || p.is("public") || p.is("protected") || p.is("published") {
+			p.advance()
+			continue
+		}
+		if p.is("property") {
+			o.Properties = append(o.Properties, p.parsePropertyDef())
+			for p.cur().Kind == lexer.TokSemicolon {
+				p.advance()
+			}
+			continue
 		}
 		if p.is("procedure") || p.is("function") || p.is("constructor") || p.is("destructor") {
 			// Inside an object only the method *signature* appears (the body is
@@ -700,6 +722,30 @@ func (p *Parser) parseObjectType(parentName string) ast.TypeExpr {
 	}
 	p.expect(lexer.TokKeyword, "end")
 	return o
+}
+
+// parsePropertyDef parses `property Name: Type [read F] [write F];`. The
+// read/write specifiers are context-sensitive identifiers.
+func (p *Parser) parsePropertyDef() ast.PropertyDef {
+	start := p.curPos()
+	p.advance() // property
+	pd := ast.PropertyDef{Base: ast.Base{P: start}, Name: p.expect(lexer.TokIdent).Text}
+	if p.match(lexer.TokColon) {
+		p.parseType() // property type (not needed for the field mapping)
+	}
+	for p.cur().Kind == lexer.TokIdent {
+		switch strings.ToLower(p.cur().Text) {
+		case "read":
+			p.advance()
+			pd.Read = p.expect(lexer.TokIdent).Text
+		case "write":
+			p.advance()
+			pd.Write = p.expect(lexer.TokIdent).Text
+		default:
+			return pd
+		}
+	}
+	return pd
 }
 
 // parseMethodSig parses an object method *signature* (no body): the keyword,

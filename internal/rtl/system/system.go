@@ -106,6 +106,7 @@ func Register(vm *ir.VM) {
 	vm.Builtins["Write"] = builtinWrite
 	vm.Builtins["WriteLn"] = builtinWriteLn
 	vm.Builtins["TypeOf"] = builtinTypeOf
+	registerSysUtils(vm)
 }
 
 // SetArguments configures ParamStr(1..n) for the running program.

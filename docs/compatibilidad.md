@@ -18,7 +18,8 @@ Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
 | Punteros | ✅ | `^T`, `@`, `New`/`Dispose`, deref `^`, comparación con `nil` |
 | Enumerados y subrangos | ✅ | subrango tratado como ordinal |
 | Conjuntos (sets) | ✅ | literales, `in`, operadores `+ - *`, comparación `= <> <= >=` |
-| Strings | ✅ | concatenación, I/O, indexado 1-based `s[i]` (lectura/escritura), Copy/Pos/Length/UpCase; capacidad `ShortString[N]` no se fuerza |
+| Strings | ✅ | dinámicos (UTF-8), concatenación, I/O, indexado 1-based `s[i]`; `AnsiString`/`WideString`/`UnicodeString`/`ShortString`/`PChar` son alias del String dinámico |
+| Conversiones / SysUtils | ✅ | IntToStr, StrToInt(Def), FloatToStr, StrToFloat, UpperCase, LowerCase, Trim/TrimLeft/TrimRight, StringOfChar, Copy/Pos/Length/UpCase |
 | Char | ✅ | |
 | `if` / `case` / `for` / `while` / `repeat` | ✅ | |
 | `break` / `continue` / `exit` | ✅ | |
@@ -29,7 +30,9 @@ Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
 | Herencia y métodos virtuales | ✅ | despacho dinámico (vtable + tag de tipo en runtime) |
 | `inherited` | 🚧 | forma sentencia (`inherited Init(...)`); en expresión: ❌ |
 | `Self` | ✅ | |
-| `class` (estilo Delphi) | ❌ | |
+| `class` (estilo Delphi) | ✅ | tipo por referencia: `Create` (asigna), métodos, herencia, métodos virtuales (despacho dinámico), `Free`, nil por defecto |
+| Propiedades (`property X read F write F`) | ✅ | mapeo a campo de respaldo (getters/setters como métodos: pendiente) |
+| Interfaces | ❌ | (pendiente) |
 | Units (`uses`) | ✅ | interface / implementation / initialization de units de usuario |
 | `finalization` | 🚧 | se parsea, no se ejecuta |
 | Compilación separada `.tpu` | ❌ | las units se compilan desde fuente |

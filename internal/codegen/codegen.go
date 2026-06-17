@@ -743,6 +743,13 @@ func (g *gen) compileCallStmt(c *ast.CallExpr) {
 func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 	// Method call: receiver.method(args) dispatches dynamically.
 	if fe, ok := c.Func.(*ast.FieldExpr); ok {
+		// Constructor call on a class type name: TClass.Create(...).
+		if id, ok2 := fe.Expr.(*ast.Ident); ok2 {
+			if ct := g.types[strings.ToLower(id.Name)]; ct != nil && ct.kind == ktObject && ct.isClass && g.lookup(id.Name) == nil {
+				g.compileClassCreate(ct, fe.Field, c.Args, asStmt)
+				return
+			}
+		}
 		g.compileMethodCall(fe.Expr, fe.Field, c.Args, asStmt)
 		return
 	}
@@ -1005,6 +1012,13 @@ func (g *gen) compileExpr(e ast.Expr) {
 	case *ast.CallExpr:
 		g.compileCall(v, false)
 	case *ast.FieldExpr:
+		// Parameterless constructor on a class type name: TClass.Create.
+		if id, ok := v.Expr.(*ast.Ident); ok {
+			if ct := g.types[strings.ToLower(id.Name)]; ct != nil && ct.kind == ktObject && ct.isClass && g.lookup(id.Name) == nil {
+				g.compileClassCreate(ct, v.Field, nil, false)
+				break
+			}
+		}
 		// A parameterless method used in an expression (recv.Method, no
 		// parentheses) is a call, not a field access.
 		if bt := g.typeOf(v.Expr); bt != nil && bt.kind == ktObject && bt.hasMethod(v.Field) {
@@ -1091,8 +1105,14 @@ func (g *gen) compileAddr(e ast.Expr) {
 	case *ast.Ident:
 		g.compileAddrIdent(v)
 	case *ast.FieldExpr:
-		g.compileAddr(v.Expr)
-		g.fn.Emit(ir.Instr{Op: ir.OPFieldAddr, S: strings.ToLower(v.Field)})
+		bt := g.typeOf(v.Expr)
+		field := bt.backingField(v.Field)
+		if bt != nil && bt.kind == ktObject && bt.isClass {
+			g.compileExpr(v.Expr) // a class reference already points at the record
+		} else {
+			g.compileAddr(v.Expr)
+		}
+		g.fn.Emit(ir.Instr{Op: ir.OPFieldAddr, S: strings.ToLower(field)})
 	case *ast.IndexExpr:
 		g.compileAddr(v.Expr)
 		bt := g.typeOf(v.Expr)
@@ -1217,7 +1237,7 @@ func (g *gen) typeOf(e ast.Expr) *typeInfo {
 		}
 	case *ast.FieldExpr:
 		if bt := g.typeOf(v.Expr); bt != nil {
-			if f := bt.field(v.Field); f != nil {
+			if f := bt.field(bt.backingField(v.Field)); f != nil {
 				return f.ti
 			}
 		}

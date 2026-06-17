@@ -49,9 +49,17 @@ type typeInfo struct {
 	dynamic  bool      // ktArray: dynamic array (`array of T`)
 	ptrName  string    // ktPointer: target type name for lazy resolution
 	// ktObject:
-	objName string      // lowercase object type name
-	parent  *typeInfo   // parent object type (nil if none)
-	methods []objMethod // own + inherited method names
+	objName string              // lowercase object type name
+	parent  *typeInfo           // parent object type (nil if none)
+	methods []objMethod         // own + inherited method names
+	isClass bool                // `class` (reference type) vs `object` (value type)
+	props   map[string]propInfo // property name (lower) -> backing fields
+}
+
+// propInfo maps a property to its read/write backing fields.
+type propInfo struct {
+	read  string
+	write string
 }
 
 // vt returns the coarse vtype used for write formatting and operator choice.
@@ -128,7 +136,7 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 	case *ast.TypeRef:
 		low := strings.ToLower(v.Name)
 		switch low {
-		case "string":
+		case "string", "ansistring", "shortstring", "widestring", "unicodestring", "pchar":
 			return &typeInfo{kind: ktString, scalar: tStr}
 		case "integer", "longint", "word", "byte", "shortint":
 			return &typeInfo{kind: ktScalar, scalar: tInt}
@@ -192,14 +200,27 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 // resolveObject builds an object type, flattening inherited fields and
 // methods so field access and dispatch work on the derived type directly.
 func (g *gen) resolveObject(o *ast.ObjectType) *typeInfo {
-	ti := &typeInfo{kind: ktObject, name: o.Name, objName: strings.ToLower(o.Name)}
+	ti := &typeInfo{kind: ktObject, name: o.Name, objName: strings.ToLower(o.Name), isClass: o.IsClass, props: map[string]propInfo{}}
 	if o.Parent != "" {
 		if pt, ok := g.types[strings.ToLower(o.Parent)]; ok && pt.kind == ktObject {
 			ti.parent = pt
-			// Inherit fields and methods.
+			// Inherit fields, methods and properties.
 			ti.fields = append(ti.fields, pt.fields...)
 			ti.methods = append(ti.methods, pt.methods...)
+			for k, v := range pt.props {
+				ti.props[k] = v
+			}
 		}
+	}
+	for _, pr := range o.Properties {
+		r, w := pr.Read, pr.Write
+		if r == "" {
+			r = w
+		}
+		if w == "" {
+			w = r
+		}
+		ti.props[strings.ToLower(pr.Name)] = propInfo{read: r, write: w}
 	}
 	for _, f := range o.Fields {
 		ft := g.resolveType(f.Type)
@@ -224,6 +245,33 @@ func (g *gen) resolveObject(o *ast.ObjectType) *typeInfo {
 		}
 	}
 	return ti
+}
+
+// classInstanceTemplate builds the zero record value for a class instance
+// (used by Create before allocating it on the heap).
+func (g *gen) classInstanceTemplate(ti *typeInfo) ir.Value {
+	rec := map[string]*ir.Value{}
+	for _, f := range ti.fields {
+		z := g.zeroTemplate(f.ti)
+		rec[f.lname] = &z
+	}
+	tt := ir.Value{Kind: ir.VKStr, Str: ti.objName}
+	rec["__type"] = &tt
+	return ir.Value{Kind: ir.VKRecord, Rec: rec}
+}
+
+// backingField maps a property name to its backing field; non-properties pass
+// through unchanged.
+func (t *typeInfo) backingField(name string) string {
+	if t != nil && t.props != nil {
+		if pr, ok := t.props[strings.ToLower(name)]; ok {
+			if pr.read != "" {
+				return pr.read
+			}
+			return pr.write
+		}
+	}
+	return name
 }
 
 func (t *typeInfo) hasMethod(name string) bool {
@@ -282,6 +330,9 @@ func (g *gen) zeroTemplate(ti *typeInfo) ir.Value {
 		}
 		return ir.Value{Kind: ir.VKRecord, Rec: rec}
 	case ktObject:
+		if ti.isClass {
+			return ir.Value{Kind: ir.VKPtr} // a class variable is a nil reference
+		}
 		rec := map[string]*ir.Value{}
 		for _, f := range ti.fields {
 			z := g.zeroTemplate(f.ti)

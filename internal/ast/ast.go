@@ -985,11 +985,21 @@ func (e EnumType) String() string {
 
 type ObjectType struct {
 	Base
-	Name    string
-	Parent  string
-	Fields  []RecordField
-	Methods []ProcDecl
-	Packed  bool
+	Name       string
+	Parent     string
+	Fields     []RecordField
+	Methods    []ProcDecl
+	Properties []PropertyDef
+	IsClass    bool // `class` (reference type) vs `object` (value type)
+	Packed     bool
+}
+
+// PropertyDef is `property Name: Type read ReadField write WriteField;`.
+type PropertyDef struct {
+	Base
+	Name  string
+	Read  string
+	Write string
 }
 
 func (ObjectType) typeExpr() {}

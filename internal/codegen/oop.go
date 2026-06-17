@@ -51,13 +51,44 @@ func (g *gen) methodOwner(ti *typeInfo, method string) string {
 	return ""
 }
 
-// compileMethodCall lowers receiver.method(args) with dynamic dispatch.
+// compileMethodCall lowers receiver.method(args) with dynamic dispatch. For a
+// class (reference type) Self is the reference itself; for a value object it is
+// the address of the instance.
 func (g *gen) compileMethodCall(recv ast.Expr, method string, args []ast.Expr, asStmt bool) {
-	g.compileAddr(recv) // Self reference
+	bt := g.typeOf(recv)
+	low := strings.ToLower(method)
+	// Free/Destroy on a class without such a method is a no-op (GC reclaims it).
+	if bt != nil && bt.kind == ktObject && (low == "free" || low == "destroy") && !bt.hasMethod(low) {
+		return
+	}
+	if bt != nil && bt.kind == ktObject && bt.isClass {
+		g.compileExpr(recv) // Self = the reference
+	} else {
+		g.compileAddr(recv) // Self = address of the value instance
+	}
 	for _, a := range args {
 		g.compileExpr(a)
 	}
-	g.fn.Emit(ir.Instr{Op: ir.OPCallMethod, S: strings.ToLower(method), A: int64(len(args) + 1)})
+	g.fn.Emit(ir.Instr{Op: ir.OPCallMethod, S: low, A: int64(len(args) + 1)})
+	if asStmt {
+		g.fn.Emit(ir.Instr{Op: ir.OPPop})
+	}
+}
+
+// compileClassCreate lowers `TClass.Create(args)`: allocate a heap instance,
+// run the constructor on it (if any), and leave the reference as the value.
+func (g *gen) compileClassCreate(ct *typeInfo, ctor string, args []ast.Expr, asStmt bool) {
+	idx := g.fn.AddTemplate(g.classInstanceTemplate(ct))
+	g.fn.Emit(ir.Instr{Op: ir.OPPushZero, A: int64(idx)})
+	g.fn.Emit(ir.Instr{Op: ir.OPHeapAlloc}) // -> reference to the instance
+	if ct.hasMethod(strings.ToLower(ctor)) {
+		g.fn.Emit(ir.Instr{Op: ir.OPDup}) // keep one reference as the result
+		for _, a := range args {
+			g.compileExpr(a)
+		}
+		g.fn.Emit(ir.Instr{Op: ir.OPCallMethod, S: strings.ToLower(ctor), A: int64(len(args) + 1)})
+		g.fn.Emit(ir.Instr{Op: ir.OPPop}) // drop the constructor result
+	}
 	if asStmt {
 		g.fn.Emit(ir.Instr{Op: ir.OPPop})
 	}
