@@ -1,0 +1,17 @@
+{
+  "unit": "Objects",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TObject", "kind": "object", "signature": "TObject = object Constructor Init; Destructor Done; virtual; Procedure Free; end", "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "Init",    "kind": "method", "signature": "constructor Init",                       "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "Done",    "kind": "method", "signature": "destructor Done; virtual",                "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "Free",    "kind": "method", "signature": "procedure Free",                         "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "TStream",     "kind": "object", "signature": "TStream = object ... end",            "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "TBufStream",  "kind": "object", "signature": "TBufStream = object ... end",         "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "TDosStream",  "kind": "object", "signature": "TDosStream = object ... end",         "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "TCollection", "kind": "object", "signature": "TCollection = object ... end",        "status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "TSortedCollection", "kind": "object", "signature": "TSortedCollection = object ... end","status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "TStringCollection",  "kind": "object", "signature": "TStringCollection = object ... end","status": "implemented", "tests": ["tv_objects_basic"]},
+    {"name": "TResourceCollection","kind": "object", "signature": "TResourceCollection = object ... end","status": "implemented", "tests": ["tv_objects_basic"]}
+  ]
+}

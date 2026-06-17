@@ -1,0 +1,8 @@
+{
+  "unit": "MsgBox",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "MessageBox",    "kind": "function", "signature": "function MessageBox(Msg: String; Params: array of String; Buttons: Word): Word", "status": "implemented", "tests": ["tv_msgbox_basic"]},
+    {"name": "MessageBoxRect","kind": "function", "signature": "function MessageBoxRect(var R: TRect; Msg: String; Params: array of String; Buttons: Word): Word", "status": "implemented", "tests": ["tv_msgbox_basic"]}
+  ]
+}

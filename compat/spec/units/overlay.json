@@ -1,0 +1,18 @@
+{
+  "unit": "Overlay",
+  "category": "rtl",
+  "symbols": [
+    {"name": "OvrInit",      "kind": "procedure", "signature": "procedure OvrInit(OvrFile: String)",            "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrInitEMS",   "kind": "procedure", "signature": "procedure OvrInitEMS(OvrFile: String; EMShandle: Word)", "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrSetBuf",    "kind": "procedure", "signature": "procedure OvrSetBuf(Size: Word)",              "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrGetBuf",    "kind": "function",  "signature": "function OvrGetBuf: Word",                    "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrClearBuf",  "kind": "procedure", "signature": "procedure OvrClearBuf",                       "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrSetRetry",  "kind": "procedure", "signature": "procedure OvrSetRetry(Size: Word)",            "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrGetRetry",  "kind": "function",  "signature": "function OvrGetRetry: Word",                  "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrResult",    "kind": "variable",  "signature": "var OvrResult: Word",                        "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrFileMode",  "kind": "variable",  "signature": "var OvrFileMode: Word",                      "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrLoadCount", "kind": "variable",  "signature": "var OvrLoadCount: Word",                     "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrTrapCount", "kind": "variable",  "signature": "var OvrTrapCount: Word",                     "status": "implemented", "tests": ["ovr_basic"]},
+    {"name": "OvrReadBuf",   "kind": "variable",  "signature": "var OvrReadBuf: Pointer",                    "status": "implemented", "tests": ["ovr_basic"]}
+  ]
+}

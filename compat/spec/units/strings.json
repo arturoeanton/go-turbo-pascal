@@ -1,0 +1,27 @@
+{
+  "unit": "Strings",
+  "category": "rtl",
+  "symbols": [
+    {"name": "StrCat",    "kind": "function", "signature": "function StrCat(Dest, Source: PChar): PChar",       "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrComp",   "kind": "function", "signature": "function StrComp(S1, S2: PChar): Integer",         "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrCopy",   "kind": "function", "signature": "function StrCopy(Dest, Source: PChar): PChar",     "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrECopy",  "kind": "function", "signature": "function StrECopy(Dest, Source: PChar): PChar",    "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrIComp",  "kind": "function", "signature": "function StrIComp(S1, S2: PChar): Integer",        "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrLCat",   "kind": "function", "signature": "function StrLCat(Dest, Source: PChar; MaxLen: Word): PChar", "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrLComp",  "kind": "function", "signature": "function StrLComp(S1, S2: PChar; MaxLen: Word): Integer", "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrLCopy",  "kind": "function", "signature": "function StrLCopy(Dest, Source: PChar; MaxLen: Word): PChar", "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrEnd",    "kind": "function", "signature": "function StrEnd(S: PChar): PChar",                  "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrDispose", "kind": "procedure", "signature": "procedure StrDispose(S: PChar)",                  "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrLen",    "kind": "function", "signature": "function StrLen(S: PChar): Word",                   "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrLIComp", "kind": "function", "signature": "function StrLIComp(S1, S2: PChar; MaxLen: Word): Integer", "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrLower",  "kind": "function", "signature": "function StrLower(S: PChar): PChar",                "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrMove",   "kind": "function", "signature": "function StrMove(Dest, Source: PChar; Count: Word): PChar", "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrNew",    "kind": "function", "signature": "function StrNew(S: PChar): PChar",                  "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrPas",    "kind": "function", "signature": "function StrPas(S: PChar): String",                 "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrPCopy",  "kind": "function", "signature": "function StrPCopy(Dest: PChar; S: String): PChar",  "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrPos",    "kind": "function", "signature": "function StrPos(Sub, S: PChar): PChar",             "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrRScan",  "kind": "function", "signature": "function StrRScan(S: PChar; Ch: Char): PChar",      "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrScan",   "kind": "function", "signature": "function StrScan(S: PChar; Ch: Char): PChar",       "status": "implemented", "tests": ["strings_basic"]},
+    {"name": "StrUpper",  "kind": "function", "signature": "function StrUpper(S: PChar): PChar",                "status": "implemented", "tests": ["strings_basic"]}
+  ]
+}

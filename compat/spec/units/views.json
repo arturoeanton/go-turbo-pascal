@@ -1,0 +1,15 @@
+{
+  "unit": "Views",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TPoint",        "kind": "type",   "signature": "TPoint = record X, Y: Integer; end", "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TRect",         "kind": "type",   "signature": "TRect = record A, B: TPoint; end",   "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TView",         "kind": "object", "signature": "TView = object ... end",              "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TGroup",        "kind": "object", "signature": "TGroup = object(TView) ... end",      "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TFrame",        "kind": "object", "signature": "TFrame = object(TView) ... end",      "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TScrollBar",    "kind": "object", "signature": "TScrollBar = object(TView) ... end",  "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TStaticText",   "kind": "object", "signature": "TStaticText = object(TView) ... end", "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TInputLine",    "kind": "object", "signature": "TInputLine = object(TView) ... end", "status": "implemented", "tests": ["tv_views_basic"]},
+    {"name": "TButton",       "kind": "object", "signature": "TButton = object(TView) ... end",    "status": "implemented", "tests": ["tv_views_basic"]}
+  ]
+}

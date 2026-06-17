@@ -1,0 +1,19 @@
+{
+  "unit": "WinDos",
+  "category": "rtl",
+  "symbols": [
+    {"name": "FileExpand",   "kind": "function",  "signature": "function FileExpand(Path: PChar): PChar",   "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "FileSearch",   "kind": "function",  "signature": "function FileSearch(Path, List: PChar): PChar", "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "FileSplit",    "kind": "procedure", "signature": "procedure FileSplit(Path, Dir, Name, Ext: PChar)", "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "FileSize",     "kind": "function",  "signature": "function FileSize(F: PChar): LongInt",    "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "FileExists",   "kind": "function",  "signature": "function FileExists(F: PChar): Boolean", "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "GetCurDir",    "kind": "procedure", "signature": "procedure GetCurDir(Dir: PChar; Drive: Byte)", "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "SetCurDir",    "kind": "procedure", "signature": "procedure SetCurDir(Dir: PChar)",         "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "CreateDir",    "kind": "procedure", "signature": "procedure CreateDir(Dir: PChar)",         "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "RemoveDir",    "kind": "procedure", "signature": "procedure RemoveDir(Dir: PChar)",         "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "FindFirst",    "kind": "procedure", "signature": "procedure FindFirst(Path: PChar; Attr: Word; var S: TSearchRec)", "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "FindNext",     "kind": "procedure", "signature": "procedure FindNext(var S: TSearchRec)",    "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "GetEnvVar",    "kind": "function",  "signature": "function GetEnvVar(Name: PChar): PChar",  "status": "implemented", "tests": ["windos_basic"]},
+    {"name": "DosError",     "kind": "variable",  "signature": "var DosError: Word",                     "status": "implemented", "tests": ["windos_basic"]}
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "unit": "Validate",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TValidator",      "kind": "object", "signature": "TValidator = object ... end", "status": "implemented", "tests": ["tv_validate_basic"]},
+    {"name": "TRangeValidator", "kind": "object", "signature": "TRangeValidator = object(TValidator) ... end", "status": "implemented", "tests": ["tv_validate_basic"]},
+    {"name": "TFilterValidator","kind": "object", "signature": "TFilterValidator = object(TValidator) ... end", "status": "implemented", "tests": ["tv_validate_basic"]}
+  ]
+}

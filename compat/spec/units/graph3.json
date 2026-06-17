@@ -1,0 +1,14 @@
+{
+  "unit": "Graph3",
+  "category": "rtl",
+  "symbols": [
+    {"name": "GraphMode",   "kind": "variable", "signature": "var GraphMode: Integer",       "status": "implemented", "tests": ["graph3_basic"]},
+    {"name": "GraphColor",  "kind": "variable", "signature": "var GraphColor: Word",         "status": "implemented", "tests": ["graph3_basic"]},
+    {"name": "GraphDriver", "kind": "variable", "signature": "var GraphDriver: Integer",     "status": "implemented", "tests": ["graph3_basic"]},
+    {"name": "InitGraph",   "kind": "procedure", "signature": "procedure InitGraph",          "status": "implemented", "tests": ["graph3_basic"]},
+    {"name": "CloseGraph",  "kind": "procedure", "signature": "procedure CloseGraph",         "status": "implemented", "tests": ["graph3_basic"]},
+    {"name": "Plot",        "kind": "procedure", "signature": "procedure Plot(X, Y: Integer)", "status": "implemented", "tests": ["graph3_basic"]},
+    {"name": "LineTo3",     "kind": "procedure", "signature": "procedure LineTo3(X, Y: Integer)", "status": "implemented", "tests": ["graph3_basic"]},
+    {"name": "MoveTo3",     "kind": "procedure", "signature": "procedure MoveTo3(X, Y: Integer)", "status": "implemented", "tests": ["graph3_basic"]}
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "unit": "Outline",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TOutline", "kind": "object", "signature": "TOutline = object(TListViewer) ... end", "status": "implemented", "tests": ["tv_outline_basic"]}
+  ]
+}

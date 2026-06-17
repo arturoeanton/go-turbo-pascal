@@ -1,0 +1,9 @@
+{
+  "unit": "Editors",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TEditor",   "kind": "object", "signature": "TEditor = object(TView) ... end", "status": "implemented", "tests": ["tv_editors_basic"]},
+    {"name": "TFileEditor","kind": "object", "signature": "TFileEditor = object(TEditor) ... end", "status": "implemented", "tests": ["tv_editors_basic"]},
+    {"name": "TEditWindow","kind": "object", "signature": "TEditWindow = object(TWindow) ... end", "status": "implemented", "tests": ["tv_editors_basic"]}
+  ]
+}

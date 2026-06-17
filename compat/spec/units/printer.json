@@ -1,0 +1,7 @@
+{
+  "unit": "Printer",
+  "category": "rtl",
+  "symbols": [
+    {"name": "Lst", "kind": "variable", "signature": "var Lst: Text", "status": "implemented", "tests": ["printer_basic"]}
+  ]
+}

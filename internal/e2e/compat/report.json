@@ -1,0 +1,758 @@
+{
+  "GeneratedAt": "2026-06-17T20:08:58Z",
+  "GitCommit": "",
+  "Total": 2,
+  "Passed": 2,
+  "Failed": 0,
+  "Skipped": 0,
+  "Tests": [
+    {
+      "Name": "hello",
+      "Category": "syntax",
+      "Backend": "vm",
+      "Passed": true,
+      "Duration": 0,
+      "Message": ""
+    },
+    {
+      "Name": "halt",
+      "Category": "control",
+      "Backend": "vm",
+      "Passed": true,
+      "Duration": 0,
+      "Message": ""
+    }
+  ],
+  "Units": [
+    {
+      "Unit": "System",
+      "Total": 50,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Crt",
+      "Total": 25,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Dos",
+      "Total": 30,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Printer",
+      "Total": 1,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Graph",
+      "Total": 60,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Strings",
+      "Total": 20,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "WinDos",
+      "Total": 12,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Graph3",
+      "Total": 8,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Turbo3",
+      "Total": 5,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Overlay",
+      "Total": 12,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Objects",
+      "Total": 10,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Drivers",
+      "Total": 6,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Views",
+      "Total": 8,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Menus",
+      "Total": 4,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Dialogs",
+      "Total": 2,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "App",
+      "Total": 3,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "HistList",
+      "Total": 2,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "MsgBox",
+      "Total": 2,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "StdDlg",
+      "Total": 2,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Editors",
+      "Total": 3,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Validate",
+      "Total": 3,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "ColorSel",
+      "Total": 2,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Outline",
+      "Total": 1,
+      "Implemented": 0,
+      "PassPercent": 0
+    },
+    {
+      "Unit": "Memory",
+      "Total": 3,
+      "Implemented": 0,
+      "PassPercent": 0
+    }
+  ],
+  "Directives": [
+    {
+      "Directive": "A+",
+      "Supported": true
+    },
+    {
+      "Directive": "A-",
+      "Supported": true
+    },
+    {
+      "Directive": "B+",
+      "Supported": true
+    },
+    {
+      "Directive": "B-",
+      "Supported": true
+    },
+    {
+      "Directive": "D+",
+      "Supported": true
+    },
+    {
+      "Directive": "D-",
+      "Supported": true
+    },
+    {
+      "Directive": "E+",
+      "Supported": true
+    },
+    {
+      "Directive": "E-",
+      "Supported": true
+    },
+    {
+      "Directive": "F+",
+      "Supported": true
+    },
+    {
+      "Directive": "F-",
+      "Supported": true
+    },
+    {
+      "Directive": "G+",
+      "Supported": true
+    },
+    {
+      "Directive": "G-",
+      "Supported": true
+    },
+    {
+      "Directive": "I+",
+      "Supported": true
+    },
+    {
+      "Directive": "I-",
+      "Supported": true
+    },
+    {
+      "Directive": "N+",
+      "Supported": true
+    },
+    {
+      "Directive": "N-",
+      "Supported": true
+    },
+    {
+      "Directive": "Q+",
+      "Supported": true
+    },
+    {
+      "Directive": "Q-",
+      "Supported": true
+    },
+    {
+      "Directive": "R+",
+      "Supported": true
+    },
+    {
+      "Directive": "R-",
+      "Supported": true
+    },
+    {
+      "Directive": "S+",
+      "Supported": true
+    },
+    {
+      "Directive": "S-",
+      "Supported": true
+    },
+    {
+      "Directive": "V+",
+      "Supported": true
+    },
+    {
+      "Directive": "V-",
+      "Supported": true
+    },
+    {
+      "Directive": "X+",
+      "Supported": true
+    },
+    {
+      "Directive": "X-",
+      "Supported": true
+    }
+  ],
+  "Diagnostics": [
+    {
+      "Code": 1,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 1,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 2,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 2,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 3,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 3,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 4,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 4,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 5,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 5,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 6,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 6,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 7,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 8,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 9,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 10,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 11,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 12,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 12,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 13,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 14,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 15,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 15,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 16,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 16,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 17,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 17,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 18,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 18,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 26,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 27,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 28,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 29,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 30,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 31,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 32,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 33,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 34,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 35,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 36,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 37,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 38,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 39,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 40,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 41,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 42,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 43,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 44,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 45,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 46,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 47,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 48,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 49,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 50,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 51,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 52,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 53,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 54,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 55,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 56,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 57,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 58,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 84,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 85,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 86,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 87,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 88,
+      "Category": "compile",
+      "Present": true
+    },
+    {
+      "Code": 100,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 101,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 102,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 103,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 104,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 105,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 106,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 150,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 151,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 152,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 153,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 154,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 155,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 156,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 157,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 158,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 159,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 160,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 161,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 162,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 200,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 201,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 202,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 203,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 204,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 205,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 206,
+      "Category": "compile",
+      "Present": false
+    },
+    {
+      "Code": 207,
+      "Category": "compile",
+      "Present": false
+    }
+  ],
+  "Features": null,
+  "Missing": null,
+  "PassPercent": 100
+}

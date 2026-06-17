@@ -1,0 +1,12 @@
+{
+  "unit": "Drivers",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TEvent",      "kind": "object", "signature": "TEvent = object ... end",  "status": "implemented", "tests": ["tv_drivers_basic"]},
+    {"name": "TDrawBuffer", "kind": "type",   "signature": "TDrawBuffer = array[0..MaxViewWidth-1] of Word", "status": "implemented", "tests": ["tv_drivers_basic"]},
+    {"name": "GetKeyEvent",  "kind": "procedure", "signature": "procedure GetKeyEvent(var Event: TEvent)", "status": "implemented", "tests": ["tv_drivers_basic"]},
+    {"name": "GetMouseEvent","kind": "procedure", "signature": "procedure GetMouseEvent(var Event: TEvent)", "status": "implemented", "tests": ["tv_drivers_basic"]},
+    {"name": "InitEvents",   "kind": "procedure", "signature": "procedure InitEvents",                    "status": "implemented", "tests": ["tv_drivers_basic"]},
+    {"name": "DoneEvents",   "kind": "procedure", "signature": "procedure DoneEvents",                    "status": "implemented", "tests": ["tv_drivers_basic"]}
+  ]
+}

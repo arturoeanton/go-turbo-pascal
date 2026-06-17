@@ -1,0 +1,83 @@
+{
+  "name": "bpgo-pascal",
+  "displayName": "BPGo Turbo Pascal 7",
+  "description": "Turbo Pascal 7 language support (syntax highlighting + diagnostics) backed by the BPGo language server.",
+  "version": "0.1.0",
+  "publisher": "bpgo",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Programming Languages"],
+  "activationEvents": ["onLanguage:pascal"],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "pascal",
+        "aliases": ["Turbo Pascal", "Pascal", "pascal"],
+        "extensions": [".pas", ".pp", ".inc", ".dpr"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "pascal",
+        "scopeName": "source.pascal",
+        "path": "./syntaxes/pascal.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "BPGo Pascal",
+      "properties": {
+        "bpgoPascal.serverPath": {
+          "type": "string",
+          "default": "pls",
+          "description": "Path to the BPGo Pascal language server (pls) binary."
+        },
+        "bpgoPascal.debugAdapterPath": {
+          "type": "string",
+          "default": "pdap",
+          "description": "Path to the BPGo Pascal debug adapter (pdap) binary."
+        }
+      }
+    },
+    "breakpoints": [{ "language": "pascal" }],
+    "debuggers": [
+      {
+        "type": "bpgo-pascal",
+        "label": "BPGo Pascal",
+        "languages": ["pascal"],
+        "configurationAttributes": {
+          "launch": {
+            "required": ["program"],
+            "properties": {
+              "program": {
+                "type": "string",
+                "description": "Absolute path to the .pas file to debug.",
+                "default": "${file}"
+              },
+              "stopOnEntry": { "type": "boolean", "default": false }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "bpgo-pascal",
+            "request": "launch",
+            "name": "Depurar programa Pascal",
+            "program": "${file}"
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "typescript": "^5.4.0"
+  }
+}

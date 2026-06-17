@@ -1,0 +1,11 @@
+{
+  "unit": "Turbo3",
+  "category": "rtl",
+  "symbols": [
+    {"name": "Kbd",   "kind": "variable", "signature": "var Kbd: Text",   "status": "implemented", "tests": ["turbo3_basic"]},
+    {"name": "Lst3",  "kind": "variable", "signature": "var Lst3: Text",  "status": "implemented", "tests": ["turbo3_basic"]},
+    {"name": "Aux",   "kind": "variable", "signature": "var Aux: Text",   "status": "implemented", "tests": ["turbo3_basic"]},
+    {"name": "AuxIn", "kind": "variable", "signature": "var AuxIn: Text", "status": "implemented", "tests": ["turbo3_basic"]},
+    {"name": "Con",   "kind": "variable", "signature": "var Con: Text",   "status": "implemented", "tests": ["turbo3_basic"]}
+  ]
+}

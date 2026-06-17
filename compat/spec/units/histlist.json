@@ -1,0 +1,8 @@
+{
+  "unit": "HistList",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "THistory",  "kind": "object", "signature": "THistory = object(TView) ... end", "status": "implemented", "tests": ["tv_histlist_basic"]},
+    {"name": "THistList", "kind": "object", "signature": "THistList = object(TStringList) ... end", "status": "implemented", "tests": ["tv_histlist_basic"]}
+  ]
+}

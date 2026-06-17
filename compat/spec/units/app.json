@@ -1,0 +1,9 @@
+{
+  "unit": "App",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TApplication", "kind": "object", "signature": "TApplication = object(TProgram) ... end", "status": "implemented", "tests": ["tv_app_basic"]},
+    {"name": "TProgram",     "kind": "object", "signature": "TProgram = object ... end", "status": "implemented", "tests": ["tv_app_basic"]},
+    {"name": "TDesktop",     "kind": "object", "signature": "TDesktop = object(TGroup) ... end", "status": "implemented", "tests": ["tv_app_basic"]}
+  ]
+}

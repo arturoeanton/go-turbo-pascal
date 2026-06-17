@@ -1,0 +1,3 @@
+program Hello;
+begin
+end.

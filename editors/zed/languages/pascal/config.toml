@@ -1,0 +1,10 @@
+name = "Pascal"
+grammar = "pascal"
+path_suffixes = ["pas", "pp", "inc", "dpr"]
+line_comments = ["// "]
+autoclose_before = ";:.,=}])>"
+
+[brackets]
+"(" = ")"
+"[" = "]"
+"'" = "'"

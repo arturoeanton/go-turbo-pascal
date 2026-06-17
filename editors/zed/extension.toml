@@ -1,0 +1,19 @@
+id = "bpgo-pascal"
+name = "BPGo Turbo Pascal 7"
+description = "Turbo Pascal 7 language support (LSP + debugging) backed by the BPGo tools."
+version = "0.1.0"
+schema_version = 1
+authors = ["BPGo"]
+
+# Syntax-highlighting grammar. Pin `commit` to a real revision of a
+# tree-sitter Pascal grammar before publishing (see README).
+[grammars.pascal]
+repository = "https://github.com/Isopod/tree-sitter-pascal"
+commit = "0000000000000000000000000000000000000000"
+
+# Language server: the command is provided by src/lib.rs (it resolves `pls`).
+# Debugging via `pdap` works today in the VSCode extension; Zed debug-adapter
+# wiring is pending Zed's (still-evolving) DAP extension API.
+[language_servers.bpgo-pls]
+name = "BPGo Pascal LS"
+languages = ["Pascal"]

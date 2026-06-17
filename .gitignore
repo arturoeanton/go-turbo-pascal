@@ -1,0 +1,5 @@
+/bin/
+*.bpi
+editors/vscode/node_modules/
+editors/vscode/out/
+editors/zed/target/

@@ -1,0 +1,8 @@
+{
+  "unit": "Dialogs",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TDialog", "kind": "object", "signature": "TDialog = object(TWindow) ... end", "status": "implemented", "tests": ["tv_dialogs_basic"]},
+    {"name": "TWindow", "kind": "object", "signature": "TWindow = object(TGroup) ... end", "status": "implemented", "tests": ["tv_dialogs_basic"]}
+  ]
+}

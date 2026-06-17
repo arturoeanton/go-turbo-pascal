@@ -1,0 +1,10 @@
+{
+  "unit": "Menus",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TMenuItem",   "kind": "object", "signature": "TMenuItem = object ... end", "status": "implemented", "tests": ["tv_menus_basic"]},
+    {"name": "TMenu",       "kind": "object", "signature": "TMenu = object ... end",     "status": "implemented", "tests": ["tv_menus_basic"]},
+    {"name": "TMenuView",   "kind": "object", "signature": "TMenuView = object(TView) ... end", "status": "implemented", "tests": ["tv_menus_basic"]},
+    {"name": "TMenuBar",    "kind": "object", "signature": "TMenuBar = object(TMenuView) ... end", "status": "implemented", "tests": ["tv_menus_basic"]}
+  ]
+}

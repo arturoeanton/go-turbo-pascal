@@ -1,0 +1,8 @@
+{
+  "unit": "StdDlg",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "FileDialog",     "kind": "function", "signature": "function FileDialog(Sender: Pointer; const AName, ATitle: String; AOptions: Word; HistoryId: Word): Word", "status": "implemented", "tests": ["tv_stddlg_basic"]},
+    {"name": "InputBox",       "kind": "function", "signature": "function InputBox(Title, ALabel, AValue: String; var S: String; Limit: Word): Word", "status": "implemented", "tests": ["tv_stddlg_basic"]}
+  ]
+}

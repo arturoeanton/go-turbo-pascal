@@ -1,0 +1,8 @@
+{
+  "unit": "ColorSel",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "TColorSelector", "kind": "object", "signature": "TColorSelector = object(TView) ... end", "status": "implemented", "tests": ["tv_colorsel_basic"]},
+    {"name": "TColorDisplay",  "kind": "object", "signature": "TColorDisplay = object(TView) ... end", "status": "implemented", "tests": ["tv_colorsel_basic"]}
+  ]
+}

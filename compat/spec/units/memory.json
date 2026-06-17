@@ -1,0 +1,9 @@
+{
+  "unit": "Memory",
+  "category": "turbo-vision",
+  "symbols": [
+    {"name": "InitMemory",   "kind": "procedure", "signature": "procedure InitMemory",                "status": "implemented", "tests": ["tv_memory_basic"]},
+    {"name": "DoneMemory",   "kind": "procedure", "signature": "procedure DoneMemory",                "status": "implemented", "tests": ["tv_memory_basic"]},
+    {"name": "MemoryError",  "kind": "procedure", "signature": "procedure MemoryError",               "status": "implemented", "tests": ["tv_memory_basic"]}
+  ]
+}
