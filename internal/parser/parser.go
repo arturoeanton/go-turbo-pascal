@@ -411,9 +411,45 @@ func (p *Parser) parseConstDecl() ast.Decl {
 func (p *Parser) parseTypeDecl() ast.Decl {
 	start := p.curPos()
 	id := p.expect(lexer.TokIdent)
+	var typeParams []string
+	if p.check(lexer.TokOp, "<") { // generic type: TList<T> = ...
+		typeParams = p.parseTypeParams()
+	}
 	p.expect(lexer.TokEqual)
 	t := p.parseType()
-	return &ast.TypeDecl{Base: ast.Base{P: start}, Name: id.Text, Type: t}
+	return &ast.TypeDecl{Base: ast.Base{P: start}, Name: id.Text, TypeParams: typeParams, Type: t}
+}
+
+// parseTypeParams parses a generic parameter list `<T1, T2: Constraint, ...>`,
+// returning the parameter names. Constraints are accepted and erased.
+func (p *Parser) parseTypeParams() []string {
+	var params []string
+	p.expect(lexer.TokOp, "<")
+	for {
+		id := p.expect(lexer.TokIdent)
+		params = append(params, id.Text)
+		if p.match(lexer.TokColon) {
+			p.parseType() // constraint, erased
+		}
+		if !p.match(lexer.TokComma) {
+			break
+		}
+	}
+	p.expect(lexer.TokOp, ">")
+	return params
+}
+
+// skipTypeArgs consumes a generic argument list `<Type, ...>` in a type
+// reference. Type arguments are erased (the runtime is dynamically typed).
+func (p *Parser) skipTypeArgs() {
+	p.expect(lexer.TokOp, "<")
+	for {
+		p.parseType()
+		if !p.match(lexer.TokComma) {
+			break
+		}
+	}
+	p.expect(lexer.TokOp, ">")
 }
 
 func (p *Parser) parseVarDecl() ast.Decl {
@@ -514,6 +550,10 @@ func (p *Parser) parseType() ast.TypeExpr {
 			return &ast.FloatType{Base: ast.Base{P: start}, Kind: titleCase(low)}
 		case "text":
 			return &ast.FileType{Base: ast.Base{P: start}, Text: true}
+		}
+		// Generic instantiation `Base<Arg, ...>`: erase the type arguments.
+		if p.check(lexer.TokOp, "<") {
+			p.skipTypeArgs()
 		}
 		// could be a parameterized type (String[n], array[0..N] of ...)
 		return &ast.TypeRef{Base: ast.Base{P: start}, Name: name, Lower: low}
@@ -897,6 +937,9 @@ func (p *Parser) parseProcDecl(allowForward bool) ast.Decl {
 		id.Text = id.Text + "." + sub.Text
 	}
 	pr := &ast.ProcDecl{Base: ast.Base{P: start}, Name: id.Text, IsMethod: isMethod, IsConstructor: isCtor, IsDestructor: isDtor, IsFunc: isFunc}
+	if p.check(lexer.TokOp, "<") { // generic routine: function Max<T>(...)
+		pr.TypeParams = p.parseTypeParams()
+	}
 	if p.match(lexer.TokLParen) {
 		for {
 			if p.check(lexer.TokRParen) {

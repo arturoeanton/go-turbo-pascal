@@ -503,8 +503,9 @@ func (c ConstDecl) String() string {
 
 type TypeDecl struct {
 	Base
-	Name string
-	Type TypeExpr
+	Name       string
+	TypeParams []string // generic type parameters: TList<T> = ...
+	Type       TypeExpr
 }
 
 func (TypeDecl) declNode() {}
@@ -531,6 +532,7 @@ func (v VarDecl) String() string {
 type ProcDecl struct {
 	Base
 	Name          string
+	TypeParams    []string // generic type parameters: function Max<T>(...)
 	Params        []Param
 	Result        *TypeRef
 	Body          *BlockBody

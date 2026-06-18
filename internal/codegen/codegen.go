@@ -216,8 +216,13 @@ func (g *gen) compileProgram(p *ast.Program) {
 		// Register function signatures first so calls (incl. recursion and
 		// forward references) resolve regardless of declaration order.
 		for _, d := range p.Block.Procs {
-			if pd, ok := d.(*ast.ProcDecl); ok && !strings.Contains(pd.Name, ".") {
-				g.registerSignature(pd)
+			if pd, ok := d.(*ast.ProcDecl); ok {
+				for _, tp := range pd.TypeParams { // erase generic routine params
+					g.registerTypeParam(tp)
+				}
+				if !strings.Contains(pd.Name, ".") {
+					g.registerSignature(pd)
+				}
 			}
 		}
 		g.declareGlobals(p.Block.Vars)

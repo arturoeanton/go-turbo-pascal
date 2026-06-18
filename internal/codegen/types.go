@@ -101,6 +101,11 @@ func (g *gen) registerTypes(decls []ast.Decl) {
 		if !ok {
 			continue
 		}
+		// Generic type parameters are erased: each resolves to an "any" type
+		// (the VM is dynamically typed, so T behaves like a dynamic value).
+		for _, tp := range td.TypeParams {
+			g.registerTypeParam(tp)
+		}
 		g.types[strings.ToLower(td.Name)] = &typeInfo{name: td.Name}
 	}
 	// Second pass: resolve each into its real shape.
@@ -126,6 +131,15 @@ func (g *gen) registerTypes(decls []ast.Decl) {
 				g.define(n, &vinfo{kind: vConst, constVal: ir.Value{Kind: ir.VKInt, Int: int64(i)}, typ: tInt})
 			}
 		}
+	}
+}
+
+// registerTypeParam registers a generic type-parameter name as an erased "any"
+// type so references to it inside the generic declaration resolve.
+func (g *gen) registerTypeParam(name string) {
+	low := strings.ToLower(name)
+	if _, exists := g.types[low]; !exists {
+		g.types[low] = &typeInfo{kind: ktScalar, scalar: tUnknown, name: name}
 	}
 }
 
