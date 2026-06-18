@@ -519,6 +519,22 @@ func (g *gen) compileAssign(a *ast.AssignStmt) {
 		g.assignToVar(id.Name, func() { g.compileExpr(a.Expr) }, id)
 		return
 	}
+	// obj.Prop := v resolves through the property's `write` specifier: a setter
+	// method becomes obj.SetProp(v); a backing field becomes a field store.
+	if fe, ok := a.Dest.(*ast.FieldExpr); ok {
+		if bt := g.typeOf(fe.Expr); bt != nil && bt.kind == ktObject {
+			if pr, ok := bt.prop(fe.Field); ok && pr.write != "" {
+				if bt.hasMethod(pr.write) {
+					g.compileMethodCall(fe.Expr, pr.write, []ast.Expr{a.Expr}, true)
+				} else {
+					g.compileFieldAddr(fe.Expr, pr.write)
+					g.compileExpr(a.Expr)
+					g.fn.Emit(ir.Instr{Op: ir.OPStoreRef})
+				}
+				return
+			}
+		}
+	}
 	// s[i] := c : 1-based character assignment into a string.
 	if ix, ok := a.Dest.(*ast.IndexExpr); ok {
 		if bt := g.typeOf(ix.Expr); bt != nil && bt.kind == ktString {
@@ -1019,14 +1035,26 @@ func (g *gen) compileExpr(e ast.Expr) {
 				break
 			}
 		}
-		// A parameterless method used in an expression (recv.Method, no
-		// parentheses) is a call, not a field access.
-		if bt := g.typeOf(v.Expr); bt != nil && bt.kind == ktObject && bt.hasMethod(v.Field) {
-			g.compileMethodCall(v.Expr, v.Field, nil, false)
-		} else {
-			g.compileAddr(v)
-			g.fn.Emit(ir.Instr{Op: ir.OPLoadRef})
+		// A property read resolves through its `read` specifier: a getter
+		// method becomes a call, a backing field becomes a field load. A bare
+		// parameterless method used in an expression is also a call.
+		if bt := g.typeOf(v.Expr); bt != nil && bt.kind == ktObject {
+			if pr, ok := bt.prop(v.Field); ok && pr.read != "" {
+				if bt.hasMethod(pr.read) {
+					g.compileMethodCall(v.Expr, pr.read, nil, false)
+				} else {
+					g.compileFieldAddr(v.Expr, pr.read)
+					g.fn.Emit(ir.Instr{Op: ir.OPLoadRef})
+				}
+				break
+			}
+			if bt.hasMethod(v.Field) {
+				g.compileMethodCall(v.Expr, v.Field, nil, false)
+				break
+			}
 		}
+		g.compileAddr(v)
+		g.fn.Emit(ir.Instr{Op: ir.OPLoadRef})
 	case *ast.IndexExpr:
 		if bt := g.typeOf(v.Expr); bt != nil && bt.kind == ktString {
 			// s[i] : 1-based character access.
@@ -1237,6 +1265,9 @@ func (g *gen) typeOf(e ast.Expr) *typeInfo {
 		}
 	case *ast.FieldExpr:
 		if bt := g.typeOf(v.Expr); bt != nil {
+			if pr, ok := bt.prop(v.Field); ok && pr.read != "" && bt.hasMethod(pr.read) {
+				return g.methodResultType(bt, pr.read)
+			}
 			if f := bt.field(bt.backingField(v.Field)); f != nil {
 				return f.ti
 			}

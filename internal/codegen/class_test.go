@@ -50,6 +50,51 @@ begin
 end.`, "42\n")
 }
 
+func TestClassPropertyGetterSetter(t *testing.T) {
+	check(t, `program C;
+type
+  TBox = class
+    FValue: Integer;
+    function GetValue: Integer;
+    procedure SetValue(v: Integer);
+    property Value: Integer read GetValue write SetValue;
+  end;
+function TBox.GetValue: Integer;
+begin
+  GetValue := FValue * 2;   { el getter transforma el valor }
+end;
+procedure TBox.SetValue(v: Integer);
+begin
+  FValue := v + 1;          { el setter transforma el valor }
+end;
+var b: TBox;
+begin
+  b := TBox.Create;
+  b.Value := 10;            { SetValue(10) -> FValue = 11 }
+  WriteLn(b.Value);         { GetValue -> 22 }
+end.`, "22\n")
+}
+
+func TestClassPropertyGetterInExpr(t *testing.T) {
+	check(t, `program C;
+type
+  TCell = class
+    FN: Integer;
+    function GetN: Integer;
+    property N: Integer read GetN write FN;
+  end;
+function TCell.GetN: Integer;
+begin
+  GetN := FN;
+end;
+var c: TCell;
+begin
+  c := TCell.Create;
+  c.N := 20;                { backing field directo }
+  WriteLn(c.N + 22);        { getter usado en una expresión }
+end.`, "42\n")
+}
+
 func TestClassInheritanceVirtual(t *testing.T) {
 	check(t, `program C;
 type

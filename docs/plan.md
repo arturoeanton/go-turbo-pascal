@@ -5,6 +5,26 @@ Estado: el núcleo (compilador real → VM, OOP, I/O, units), el motor embebible
 testeados. Este documento audita el repo y prioriza lo que falta para los dos
 casos de uso.
 
+## Hoja de ruta D (orden de ejecución acordado)
+
+Orden: **D1 → D11 → D10 → D7 → D2 → D4 → D3 → D5 → D6**. Primero correcciones de
+trampas y la propuesta de valor del motor embebible (correctitud, velocidad,
+seguridad, DX), luego el bloque de lenguaje Object Pascal moderno.
+
+| ID | Título | Tipo | Descripción | Esfuerzo |
+|----|--------|------|-------------|----------|
+| D1 | Properties funcionales | Corrección | `property X read F write F` parsea pero se ignora en runtime; implementar read/write contra campo backing y métodos getter/setter. | M |
+| D11 | Performance vs goja | Feature | Optimizar boxing de `Value` y despacho del intérprete para cerrar la brecha de tiempo (~43% en el loop); vmpas ya gana 58× en memoria. | L |
+| D10 | Sandbox real (Net/Exec/Env + límites) | Feature | Flags reservados sin RTL que gobernar; hoy el sandbox solo cubre FS + MaxSteps. Añadir RTL sensible + enforcement + límite mem/tiempo. | M |
+| D7 | LSP IDE-grade | Feature | `pls` hoy solo da diagnósticos; añadir hover, completion, goto-def y símbolos. | L |
+| D2 | Variant records: implementar o error | Corrección | `flattenVariant()` es stub vacío; la parte `case` se descarta sin avisar. Mínimo: error claro; ideal: variantes reales. | S/L |
+| D4 | Closures / métodos anónimos | Feature | No existe; `procedure`/`function` anónimos + captura de entorno. | XL |
+| D3 | Interfaces | Feature | `class(TParent, IFoo)` se acepta pero no se modela; falta contrato + dispatch. | L |
+| D5 | Genéricos `<T>` | Feature | No existe; instanciación/monomorfización. | XL |
+| D6 | Operator overloading | Feature | Operadores hardcodeados por tipo; declarar `operator +` y resolver dispatch. | M |
+
+Esfuerzo: S = horas · M = ~1 sesión · L = varias sesiones · XL = grande/multi-sesión.
+
 > **Progreso reciente:** A1 (compile-once/run-many en `vmpas`) ✅, A2 (pool de
 > frames + args por slice; `fib(20)` de ~65k a ~88 allocs) ✅, B1 (unit `Crt`
 > conectada) ✅. Limpieza: `cmd/bprun` (muerto) y `internal/bgi` (vacío)

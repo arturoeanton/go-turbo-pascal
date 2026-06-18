@@ -274,6 +274,16 @@ func (t *typeInfo) backingField(name string) string {
 	return name
 }
 
+// prop returns the property definition for name (case-insensitive) if t is an
+// object type that declares it.
+func (t *typeInfo) prop(name string) (propInfo, bool) {
+	if t == nil || t.props == nil {
+		return propInfo{}, false
+	}
+	pr, ok := t.props[strings.ToLower(name)]
+	return pr, ok
+}
+
 func (t *typeInfo) hasMethod(name string) bool {
 	low := strings.ToLower(name)
 	for _, m := range t.methods {

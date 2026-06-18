@@ -51,6 +51,35 @@ func (g *gen) methodOwner(ti *typeInfo, method string) string {
 	return ""
 }
 
+// compileFieldAddr pushes the address of recv.field, handling the class (the
+// reference already points at the record) vs value-object (take the address)
+// distinction. It mirrors compileAddr's FieldExpr case but takes an explicit
+// field name, so property read/write specifiers resolve to the right field.
+func (g *gen) compileFieldAddr(recv ast.Expr, field string) {
+	bt := g.typeOf(recv)
+	if bt != nil && bt.kind == ktObject && bt.isClass {
+		g.compileExpr(recv)
+	} else {
+		g.compileAddr(recv)
+	}
+	g.fn.Emit(ir.Instr{Op: ir.OPFieldAddr, S: strings.ToLower(field)})
+}
+
+// methodResultType returns the result type of a (possibly inherited) function
+// method as a synthetic scalar typeInfo, used to type property getters. It
+// returns nil when the method is unknown or is a procedure.
+func (g *gen) methodResultType(bt *typeInfo, method string) *typeInfo {
+	owner := g.methodOwner(bt, strings.ToLower(method))
+	if owner == "" {
+		return nil
+	}
+	fe := g.funcs[owner+"."+strings.ToLower(method)]
+	if fe == nil || !fe.isFunc {
+		return nil
+	}
+	return &typeInfo{kind: ktScalar, scalar: fe.resultType}
+}
+
 // compileMethodCall lowers receiver.method(args) with dynamic dispatch. For a
 // class (reference type) Self is the reference itself; for a value object it is
 // the address of the instance.
