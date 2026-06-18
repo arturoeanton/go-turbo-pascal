@@ -69,6 +69,21 @@ Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
 | Plugin VSCode | ✅ | sintaxis + LSP + depuración |
 | Plugin Zed | 🚧 | LSP listo; DAP pendiente de la API de Zed |
 
+## Extensiones modernas (`{$MODE BPGO}`)
+
+Las siguientes features **no son TP7**: se activan solo con el directivo
+`{$MODE BPGO}` al inicio del fuente. Sin él, el compilador es TP7 estricto y las
+palabras nuevas (`let`, `test`, `helper`) siguen siendo identificadores
+normales, preservando la compatibilidad.
+
+| Feature | Estado | Notas |
+|---|---|---|
+| `{$MODE BPGO}` | ✅ | gate de compatibilidad; sin él, TP7 puro |
+| Inferencia local | ✅ | `var x := expr` infiere el tipo del inicializador (y `var x: T = expr`) |
+| `let` inmutable | ✅ | `let x = expr` / `let x := expr`; reasignar es error de compilación |
+| Extension methods (helpers) | ✅ | `record helper for T` / `class helper for T` (estilo Delphi); despacho estático por el tipo del receptor; `Self`/campos del tipo extendido accesibles |
+| Unit tests integrados | ✅ | `test 'nombre' begin … end`; `AssertTrue`/`AssertFalse`/`AssertEqual` (una aserción fallida lanza y se reporta como FAIL); runner que imprime PASS/FAIL por test |
+
 ## Fuera de alcance (por ahora)
 
 Ensamblador inline, overlays, punteros far, generación de EXE MZ real y

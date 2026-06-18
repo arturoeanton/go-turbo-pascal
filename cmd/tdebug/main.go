@@ -23,7 +23,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "-V", "--version":
-		fmt.Println("tdebug 0.1.6 (BPGo debugger)")
+		fmt.Println("tdebug 0.1.7 (BPGo debugger)")
 		return
 	case "-h", "--help", "help":
 		usage()

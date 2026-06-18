@@ -85,6 +85,13 @@ type UnitRef struct {
 
 func (u UnitRef) String() string { return u.Name }
 
+// TestBlock is an integrated unit test: `test 'name' begin ... end` ({$MODE BPGO}).
+type TestBlock struct {
+	Base
+	Name string
+	Body *BlockBody
+}
+
 type Block struct {
 	Base
 	Labels []int
@@ -92,6 +99,7 @@ type Block struct {
 	Types  []Decl
 	Vars   []Decl
 	Procs  []Decl
+	Tests  []*TestBlock
 	Body   *BlockBody
 	// SymScope is set by the semantic analyzer; nil for unanalyzed trees.
 	SymScope interface{}
@@ -1017,6 +1025,7 @@ type ObjectType struct {
 	Methods    []ProcDecl
 	Properties  []PropertyDef
 	Implements  []string // interfaces a class implements: class(TParent, IFoo, IBar)
+	HelperFor   string   // non-empty for `record/class helper for Base`: extends Base
 	IsClass     bool     // `class` (reference type) vs `object` (value type)
 	IsInterface bool     // `interface` type (reference, methods only)
 	Packed      bool

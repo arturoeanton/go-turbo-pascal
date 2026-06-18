@@ -1,7 +1,7 @@
 id = "bpgo-pascal"
 name = "BPGo Turbo Pascal 7"
 description = "Turbo Pascal 7 language support (LSP + debugging) backed by the BPGo tools."
-version = "0.1.6"
+version = "0.1.7"
 schema_version = 1
 authors = ["BPGo"]
 

@@ -19,8 +19,47 @@ func (g *gen) compileMethod(pd *ast.ProcDecl) {
 		return
 	}
 	fnName := typeName + "." + strings.ToLower(methodOrig)
+	// For a helper, Self is the extended (base) type, so Self.field and bare
+	// field access resolve against it; the IR function keeps the helper's name.
+	selfType := objType
+	if objType.helperFor != "" {
+		if base := g.types[objType.helperFor]; base != nil {
+			selfType = base
+		}
+	}
 	// resultName is the unqualified method name so `Method := value` works.
-	g.compileRoutine(pd, fnName, objType, methodOrig)
+	g.compileRoutine(pd, fnName, selfType, methodOrig)
+}
+
+// helperMethod returns the IR function name of a helper method extending the
+// receiver's (named) type, or "" if none applies.
+func (g *gen) helperMethod(bt *typeInfo, method string) string {
+	if bt == nil || bt.name == "" {
+		return ""
+	}
+	if m, ok := g.helpers[strings.ToLower(bt.name)]; ok {
+		return m[strings.ToLower(method)]
+	}
+	return ""
+}
+
+// compileHelperCall lowers receiver.method(args) for a helper (extension)
+// method as a static call, passing the receiver as Self (the reference for a
+// class, the address for a value type / record).
+func (g *gen) compileHelperCall(recv ast.Expr, irName string, args []ast.Expr, asStmt bool) {
+	bt := g.typeOf(recv)
+	if bt != nil && bt.kind == ktObject && bt.isClass {
+		g.compileExpr(recv)
+	} else {
+		g.compileAddr(recv)
+	}
+	for _, a := range args {
+		g.compileExpr(a)
+	}
+	g.fn.Emit(ir.Instr{Op: ir.OPCall, S: irName, A: int64(len(args) + 1)})
+	if asStmt {
+		g.fn.Emit(ir.Instr{Op: ir.OPPop})
+	}
 }
 
 // buildVtables computes, for every object type, the flattened method table

@@ -57,6 +57,8 @@ type typeInfo struct {
 	props   map[string]propInfo // property name (lower) -> backing fields
 	// ktFunc:
 	isFunc bool // procedural type returns a value (function vs procedure)
+	// helper (record/class helper for Base):
+	helperFor string // lowercase name of the extended type ("" if not a helper)
 }
 
 // propInfo maps a property to its read/write backing fields.
@@ -124,6 +126,16 @@ func (g *gen) registerTypes(decls []ast.Decl) {
 				ti.objName = strings.ToLower(td.Name)
 			}
 			*g.types[strings.ToLower(td.Name)] = *ti
+			// A helper registers its methods against the extended type so that
+			// `value.Method` on that type resolves to the helper (static call).
+			if ti.helperFor != "" {
+				if g.helpers[ti.helperFor] == nil {
+					g.helpers[ti.helperFor] = map[string]string{}
+				}
+				for _, m := range ti.methods {
+					g.helpers[ti.helperFor][m.name] = ti.objName + "." + m.name
+				}
+			}
 		}
 		// Enumerated constants enter the scope as ordinals.
 		if en, ok := td.Type.(*ast.EnumType); ok {
@@ -219,7 +231,7 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 // resolveObject builds an object type, flattening inherited fields and
 // methods so field access and dispatch work on the derived type directly.
 func (g *gen) resolveObject(o *ast.ObjectType) *typeInfo {
-	ti := &typeInfo{kind: ktObject, name: o.Name, objName: strings.ToLower(o.Name), isClass: o.IsClass, props: map[string]propInfo{}}
+	ti := &typeInfo{kind: ktObject, name: o.Name, objName: strings.ToLower(o.Name), isClass: o.IsClass, helperFor: strings.ToLower(o.HelperFor), props: map[string]propInfo{}}
 	if o.Parent != "" {
 		if pt, ok := g.types[strings.ToLower(o.Parent)]; ok && pt.kind == ktObject {
 			ti.parent = pt

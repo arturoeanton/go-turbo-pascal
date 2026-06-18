@@ -346,6 +346,14 @@ func (p *Parser) parseBlock(isProgram bool) *ast.Block {
 			p.match(lexer.TokSemicolon)
 			continue
 		}
+		// {$MODE BPGO}: `test 'name' begin ... end` integrated unit test.
+		if p.isContextualKw("test") {
+			if tb := p.parseTestBlock(); tb != nil {
+				blk.Tests = append(blk.Tests, tb)
+			}
+			p.match(lexer.TokSemicolon)
+			continue
+		}
 		if t.Kind != lexer.TokKeyword {
 			return blk
 		}
@@ -509,6 +517,18 @@ func (p *Parser) parseVarDecl() ast.Decl {
 		init = p.parseExpr() // var x: T = expr
 	}
 	return &ast.VarDecl{Base: ast.Base{P: start}, Names: names, Type: t, Abs: abs, Init: init}
+}
+
+// parseTestBlock parses `test 'name' begin ... end` ({$MODE BPGO}).
+func (p *Parser) parseTestBlock() *ast.TestBlock {
+	start := p.curPos()
+	p.advance() // 'test'
+	name := ""
+	if p.check(lexer.TokString) {
+		name = p.cur().Str
+		p.advance()
+	}
+	return &ast.TestBlock{Base: ast.Base{P: start}, Name: name, Body: p.parseBlockBody()}
 }
 
 // parseLetDecl parses a modern immutable binding: `let x [: T] = expr` or
@@ -681,6 +701,9 @@ func (p *Parser) parseFileType() ast.TypeExpr {
 func (p *Parser) parseRecordType() ast.TypeExpr {
 	start := p.curPos()
 	p.advance() // record
+	if p.isContextualKw("helper") { // {$MODE BPGO}: record helper for Base
+		return p.parseHelperType(start, false)
+	}
 	r := &ast.RecordType{Base: ast.Base{P: start}}
 	for {
 		if p.is("end") {
@@ -758,6 +781,9 @@ func (p *Parser) parseObjectType(parentName string) ast.TypeExpr {
 	isClass := p.is("class")
 	isInterface := p.is("interface")
 	p.advance() // object | class | interface
+	if isClass && p.isContextualKw("helper") { // {$MODE BPGO}: class helper for Base
+		return p.parseHelperType(start, true)
+	}
 	o := &ast.ObjectType{Base: ast.Base{P: start}, IsClass: isClass || isInterface, IsInterface: isInterface}
 	if p.cur().Kind == lexer.TokLParen {
 		p.advance()
@@ -812,6 +838,38 @@ func (p *Parser) parseObjectType(parentName string) ast.TypeExpr {
 		ft := p.parseType()
 		o.Fields = append(o.Fields, ast.RecordField{Base: ast.Base{P: start}, Names: names, Type: ft})
 		p.match(lexer.TokSemicolon)
+	}
+	p.expect(lexer.TokKeyword, "end")
+	return o
+}
+
+// parseHelperType parses the body of `record helper for Base` / `class helper
+// for Base` (the keyword and `helper` were already consumed reaching here for
+// the keyword; `helper` is the current token). It carries only method
+// signatures; the bodies are separate Type.Method declarations.
+func (p *Parser) parseHelperType(start ast.Pos, isClass bool) ast.TypeExpr {
+	p.advance() // helper
+	p.expect(lexer.TokKeyword, "for")
+	target := p.expect(lexer.TokIdent).Text
+	o := &ast.ObjectType{Base: ast.Base{P: start}, IsClass: isClass, HelperFor: target}
+	for {
+		if p.is("end") || p.cur().Kind == lexer.TokEOF {
+			break
+		}
+		if p.is("private") || p.is("public") || p.is("protected") || p.is("published") {
+			p.advance()
+			continue
+		}
+		if p.is("procedure") || p.is("function") || p.is("constructor") || p.is("destructor") {
+			if pr := p.parseMethodSig(); pr != nil {
+				o.Methods = append(o.Methods, *pr)
+			}
+			for p.cur().Kind == lexer.TokSemicolon {
+				p.advance()
+			}
+			continue
+		}
+		p.advance() // skip anything else defensively
 	}
 	p.expect(lexer.TokKeyword, "end")
 	return o

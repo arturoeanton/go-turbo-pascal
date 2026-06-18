@@ -99,6 +99,7 @@ type gen struct {
 	gotoFix   []gotoRef                    // pending goto jumps to patch (per function)
 	vtables   map[string]map[string]string // type -> method -> ir func name
 	operators map[string]string            // "op|leftType|rightType" -> ir func name
+	helpers   map[string]map[string]string // extended type -> method -> ir func name
 	dir       string                       // directory of the main source (unit lookup)
 	loaded    map[string]bool              // units already loaded
 	initFuncs []string                     // unit initialization functions to run first
@@ -168,6 +169,7 @@ func CompileWithOptions(src, file string, opts Options) (*ir.Program, error) {
 		autoLoop:  opts.AutoDeclareLoopVars,
 		vtables:   map[string]map[string]string{},
 		operators: map[string]string{},
+		helpers:   map[string]map[string]string{},
 		dir:       filepath.Dir(file),
 		loaded:    map[string]bool{},
 	}
@@ -258,6 +260,13 @@ func (g *gen) compileProgram(p *ast.Program) {
 	if p.Body != nil {
 		for _, s := range p.Body.Stmts {
 			g.compileStmt(s)
+		}
+	}
+	// Integrated unit tests run after the program body, each isolated in a
+	// try/except so a failed assertion (which raises) is reported, not fatal.
+	if p.Block != nil {
+		for _, tb := range p.Block.Tests {
+			g.compileTestBlock(tb)
 		}
 	}
 	g.patchGotos(main)
@@ -838,6 +847,14 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 				return
 			}
 		}
+		// Extension method (helper) when the type has no such real method.
+		bt := g.typeOf(fe.Expr)
+		if !(bt != nil && bt.kind == ktObject && bt.hasMethod(fe.Field)) {
+			if irName := g.helperMethod(bt, fe.Field); irName != "" {
+				g.compileHelperCall(fe.Expr, irName, c.Args, asStmt)
+				return
+			}
+		}
 		g.compileMethodCall(fe.Expr, fe.Field, c.Args, asStmt)
 		return
 	}
@@ -847,6 +864,13 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 		return
 	}
 	name := strings.ToLower(id.Name)
+
+	// Built-in assertions for integrated tests (unless shadowed by a user
+	// routine of the same name). They raise on failure; a `test` block catches.
+	if g.isAssertion(name) {
+		g.compileAssertion(name, c.Args)
+		return
+	}
 
 	// Bare method call inside a method body resolves against Self.
 	if g.curObject != nil && g.curObject.hasMethod(name) && g.lookup(id.Name) == nil {
@@ -1137,6 +1161,11 @@ func (g *gen) compileExpr(e ast.Expr) {
 				g.compileMethodCall(v.Expr, v.Field, nil, false)
 				break
 			}
+		}
+		// Parameterless extension method (helper) used as an expression.
+		if irName := g.helperMethod(g.typeOf(v.Expr), v.Field); irName != "" {
+			g.compileHelperCall(v.Expr, irName, nil, false)
+			break
 		}
 		g.compileAddr(v)
 		g.fn.Emit(ir.Instr{Op: ir.OPLoadRef})

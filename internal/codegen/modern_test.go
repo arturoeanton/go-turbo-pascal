@@ -83,3 +83,81 @@ end.`); err == nil {
 		t.Fatal("expected `var x := expr` to be rejected outside {$MODE BPGO}")
 	}
 }
+
+func TestRecordHelperMethod(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+type
+  TPoint = record
+    x, y: Integer;
+  end;
+  TPointHelper = record helper for TPoint
+    function Sum: Integer;
+    procedure Scale(f: Integer);
+  end;
+function TPointHelper.Sum: Integer;
+begin
+  Sum := x + y;     { bare field access resolves against TPoint via Self }
+end;
+procedure TPointHelper.Scale(f: Integer);
+begin
+  x := x * f;
+  y := y * f;
+end;
+var p: TPoint;
+begin
+  p.x := 3; p.y := 4;
+  p.Scale(2);          { extension method mutates p }
+  WriteLn(p.Sum());    { extension method reads p }
+end.`, "14\n")
+}
+
+func TestClassHelperMethod(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+type
+  TBox = class
+    w, h: Integer;
+  end;
+  TBoxHelper = class helper for TBox
+    function Area: Integer;
+  end;
+function TBoxHelper.Area: Integer;
+begin
+  Area := w * h;
+end;
+var b: TBox;
+begin
+  b := TBox.Create;
+  b.w := 5; b.h := 6;
+  WriteLn(b.Area());
+end.`, "30\n")
+}
+
+func TestIntegratedUnitTests(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+function Add(a, b: Integer): Integer;
+begin
+  Add := a + b;
+end;
+test 'suma correcta' begin
+  AssertEqual(Add(2, 3), 5);
+  AssertTrue(Add(0, 0) = 0);
+end;
+test 'falla a proposito' begin
+  AssertEqual(Add(2, 2), 5);
+end;
+begin
+end.`, "PASS: suma correcta\nFAIL: falla a proposito\n")
+}
+
+func TestAssertFalse(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+test 'assertfalse' begin
+  AssertFalse(1 = 2);
+end;
+begin
+end.`, "PASS: assertfalse\n")
+}

@@ -70,7 +70,7 @@ func main() {
 	flag.BoolVar(showVersion, "V", false, "show version (alias)")
 	flag.Parse()
 	if *showVersion {
-		fmt.Println("turbo 0.1.6 (BPGo IDE)")
+		fmt.Println("turbo 0.1.7 (BPGo IDE)")
 		return
 	}
 	source := "main.pas"
@@ -220,7 +220,7 @@ func renderDesktop(i *ide.IDE) {
 	fmt.Println("+------------------------------------------------------------------------------+")
 	fmt.Println("| File  Edit  Search  Run  Compile  Debug  Tools  Options  Window  Help        |")
 	fmt.Println("+------------------------------------------------------------------------------+")
-	fmt.Printf("| BPGo Turbo IDE 0.1.6        Project: %-18s File: %-18s |\n", trimCell(i.Project.Name, 18), trimCell(file, 18))
+	fmt.Printf("| BPGo Turbo IDE 0.1.7        Project: %-18s File: %-18s |\n", trimCell(i.Project.Name, 18), trimCell(file, 18))
 	fmt.Println("|                                                                              |")
 	fmt.Println("|  F3 Open  F2 Save  F9 Compile  Ctrl-F9 Run  F7 Trace  F8 Step  Ctrl-F8 Watch |")
 	fmt.Println("|  Mouse: use 'mouse X Y BUTTON DOWN' for scripted mouse events.               |")
