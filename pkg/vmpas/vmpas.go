@@ -41,9 +41,25 @@ type Capabilities struct {
 	Exec        bool          // allow the Exec host builtin (run processes)
 	Env         bool          // allow the GetEnv host builtin
 	Database    bool          // allow the SQL host builtins (Db*); needs UseDB
-	MaxSteps    int           // VM step limit (0 = engine default)
-	MaxHeap     int           // max heap allocations (0 = unlimited)
-	MaxDuration time.Duration // wall-clock execution limit (0 = none)
+	MaxSteps     int           // VM step limit (0 = engine default)
+	MaxHeap      int           // max heap allocations (0 = unlimited)
+	MaxOutput    int           // max captured output bytes (0 = unlimited)
+	MaxCallDepth int           // max call-stack depth (0 = unlimited)
+	MaxDuration  time.Duration // wall-clock execution limit (0 = none)
+}
+
+// Sandboxed returns a safe, bounded capability set suitable for running
+// untrusted per-tenant scripts in a multi-tenant service: default-deny on
+// all host access, plus conservative ceilings on steps, heap, output, call
+// depth and wall-clock time. Adjust the limits to taste.
+func Sandboxed() Capabilities {
+	return Capabilities{
+		MaxSteps:     5_000_000,
+		MaxHeap:      1_000_000,
+		MaxOutput:    1 << 20, // 1 MiB
+		MaxCallDepth: 5000,
+		MaxDuration:  2 * time.Second,
+	}
 }
 
 // Restricted returns a safe, default-deny capability set.
@@ -104,6 +120,18 @@ func NewWith(caps Capabilities) *Engine {
 		funcs: map[string]reflect.Value{},
 		procs: map[string]reflect.Value{},
 	}
+}
+
+// RunSandboxed compiles and runs untrusted Pascal source on a fresh,
+// share-nothing engine under the given capabilities, returning the captured
+// output and any error. It is the recommended one-shot entry point for
+// multi-tenant services: every call is fully isolated (no bindings, no state
+// shared with other tenants or prior calls). Pass Sandboxed() for safe
+// defaults, or a custom Capabilities to tune limits / grant host access.
+func RunSandboxed(code string, caps Capabilities) (string, error) {
+	e := NewWith(caps)
+	err := e.Run(code)
+	return e.Output(), err
 }
 
 var defaultEngine = New()
@@ -249,10 +277,19 @@ func (e *Engine) execLocked(prog *ir.Program) error {
 	if e.caps.MaxHeap > 0 {
 		vm.MaxHeap = e.caps.MaxHeap
 	}
+	if e.caps.MaxOutput > 0 {
+		vm.MaxOutput = e.caps.MaxOutput
+	}
+	if e.caps.MaxCallDepth > 0 {
+		vm.MaxCallDepth = e.caps.MaxCallDepth
+	}
 	if e.caps.MaxDuration > 0 {
 		vm.Deadline = time.Now().Add(e.caps.MaxDuration)
 	}
 	vm.Builtins = e.prepareBuiltins()
+	// Reset per-run host state so nothing leaks across runs (important when an
+	// engine is reused for successive tenant requests).
+	e.cursor, e.dbErr, e.httpStatus, e.httpHeaders = nil, "", 0, nil
 	e.seedVars(vm)
 
 	vm.Run()

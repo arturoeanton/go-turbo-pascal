@@ -178,6 +178,8 @@ type VM struct {
 	Steps        int
 	MaxHeap      int       // max heap allocations (0 = unlimited)
 	heapAllocs   int       // heap allocations so far
+	MaxOutput    int       // max output bytes (0 = unlimited)
+	MaxCallDepth int       // max call-stack depth (0 = unlimited)
 	Deadline     time.Time // wall-clock deadline (zero = none)
 	RandomState  uint32
 	Trace        bool
@@ -381,6 +383,21 @@ func (vm *VM) Step(frame *Frame) bool {
 	// of the per-instruction hot path.
 	if !vm.Deadline.IsZero() && vm.Steps&0xFFF == 0 && time.Now().After(vm.Deadline) {
 		vm.RuntimeError = 200
+		vm.Halted = true
+		return false
+	}
+	// Output cap: bound the captured output so an untrusted guest cannot
+	// exhaust host memory by writing in a loop. Gated on MaxOutput so the
+	// common (uncapped) case pays only one comparison.
+	if vm.MaxOutput > 0 && vm.Output.Buf.Len() > vm.MaxOutput {
+		vm.RuntimeError = 203 // output limit exceeded
+		vm.Halted = true
+		return false
+	}
+	// Call-depth cap: defense-in-depth against runaway recursion exhausting
+	// the host stack before MaxSteps trips. Covers all call opcodes.
+	if vm.MaxCallDepth > 0 && len(vm.CallStack) > vm.MaxCallDepth {
+		vm.RuntimeError = 202 // stack overflow
 		vm.Halted = true
 		return false
 	}

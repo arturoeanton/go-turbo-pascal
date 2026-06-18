@@ -124,15 +124,53 @@ eng := vmpas.NewWith(vmpas.Full())
 | `Exec`        | habilita el builtin de host `Exec(comando): Integer`            |
 | `Env`         | habilita el builtin de host `GetEnv(nombre): string`            |
 | `Database`    | habilita los builtins SQL (`Db*`); requiere `UseDB`             |
-| `MaxSteps`    | límite de pasos de la VM (0 = por defecto)                      |
-| `MaxHeap`     | máximo de asignaciones de heap, `New`/punteros (0 = sin límite) |
-| `MaxDuration` | límite de tiempo de pared de ejecución (0 = sin límite)         |
+| `MaxSteps`     | límite de pasos de la VM (0 = por defecto)                      |
+| `MaxHeap`      | máximo de asignaciones de heap, `New`/punteros (0 = sin límite) |
+| `MaxOutput`    | máximo de bytes de salida capturada (0 = sin límite)            |
+| `MaxCallDepth` | máxima profundidad de pila de llamadas (0 = sin límite)         |
+| `MaxDuration`  | límite de tiempo de pared de ejecución (0 = sin límite)         |
 
 Las capacidades se aplican en el límite Go↔Pascal: los builtins prohibidos no
 se registran, así que llamarlos es un **error de compilación** (no un fallo en
 tiempo de ejecución). `GetEnv`, `Exec`, los `Http*` y los `Db*` son
 **extensiones de host de vmpas** (no forman parte de la RTL de TP7) y solo
 existen cuando su capacidad está concedida.
+
+## Multi-tenant: ejecutar scripts no confiables
+
+Para un servicio donde **cada tenant aporta su propio script** (motor de reglas
+de negocio embebido), el patrón es **un engine por request/tenant** —
+*share-nothing*: nada de estado se comparte entre ejecuciones. El helper
+`RunSandboxed` lo hace en una línea, sobre un engine fresco y aislado:
+
+```go
+out, err := vmpas.RunSandboxed(tenantScript, vmpas.Sandboxed())
+```
+
+`Sandboxed()` es un preset *default-deny* con techos conservadores pensado para
+código no confiable (sin FS/red/exec/env, con límites de pasos, heap, salida,
+profundidad de llamadas y tiempo). Ajustá los campos a gusto:
+
+```go
+caps := vmpas.Sandboxed()
+caps.MaxDuration = 500 * time.Millisecond
+caps.MaxOutput   = 256 * 1024
+caps.Network     = true            // permitir HTTP si el tenant lo necesita
+out, err := vmpas.RunSandboxed(tenantScript, caps)
+```
+
+Garantías de aislamiento:
+
+- **Sin fugas entre ejecuciones**: cada `Run` crea una VM nueva (globals en
+  cero), y el estado de host transitorio (cursor SQL, último error/estado HTTP,
+  headers) se resetea al inicio de cada ejecución. Reutilizar un mismo `Engine`
+  para varios tenants no filtra datos entre ellos.
+- **Límites duros**: un script que inunda la salida, recursiona sin fin o entra
+  en bucle infinito se detiene con un error de runtime (no agota la memoria ni
+  cuelga el proceso del host).
+- **Paralelismo**: el host puede correr muchos engines en goroutines distintas
+  en paralelo (un engine es de un solo hilo por ejecución; la concurrencia real
+  la aporta el host con un engine por goroutine).
 
 ## Integración: HTTP y SQL (consumir APIs y bases de datos)
 

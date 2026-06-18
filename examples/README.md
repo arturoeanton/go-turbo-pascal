@@ -38,5 +38,17 @@ memoria, y desde Pascal consume la API (`HttpGet`/`HttpPost`/`HttpLastStatus`)
 y recorre una consulta (`DbOpen`/`DbEof`/`DbNext`/`DbFieldInt`/`DbFieldStr`)
 bajo las capacidades `Network` y `Database`.
 
+## Scripts multi-tenant aislados (`examples/multitenant/`)
+
+```bash
+go run ./examples/multitenant
+```
+
+Simula un SaaS donde cada tenant sube su propia regla de negocio: ejecuta cada
+script en un engine fresco y acotado con `vmpas.RunSandboxed` + el preset
+`vmpas.Sandboxed()` (default-deny, con techos de pasos/heap/salida/profundidad/
+tiempo). Muestra el aislamiento *share-nothing* y cómo un script malicioso
+(bucle infinito) se detiene sin colgar el host.
+
 Ver también [`../docs/inicio.md`](../docs/inicio.md) y la sección de
 integración en [`../docs/vmpas.md`](../docs/vmpas.md).

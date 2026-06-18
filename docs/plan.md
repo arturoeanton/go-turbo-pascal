@@ -54,10 +54,10 @@ records-como-slices es el mejor ROI y ayuda a F); la concurrencia se cierra con
 
 | ID | Título | Qué | Prioridad |
 |----|--------|-----|-----------|
-| N5 | Mejorar N4 | Chequeos de tipo más profundos y seguros (compat. de asignaciones por categoría). | Alta |
+| N5 ✅ | Mejorar N4 | **Hecho.** Chequeos de tipo más profundos y seguros (compat. de asignaciones por categoría, sin falsos positivos sobre TP7 válido). | Alta |
 | N6 | **Congelar/versionar la API de `vmpas`** | Será cimiento de varios productos propietarios; romperla los rompe. Definir la superficie pública estable, versionar (semver), tests de contrato de la API. **Riesgo si no se hace.** | Alta (futuro) |
-| N7 | Hardening multi-tenant SaaS | Correr scripts de clientes con seguridad: tope de salida, profundidad de recursión, reset entre tenants, API `RunSandboxed`; patrón un-Engine-por-tenant. | Alta |
-| N8 | Expandir stdlib (ERP/contabilidad/stock/RRHH/CMS/DMS) | Funciones genéricas de gestión: redondeo/IVA/impuestos/interés, días hábiles/edad/fin-de-mes, formato de montos, padding/máscaras, validaciones. Verticales como paquetes aparte. | Media |
+| N7 ✅ | Hardening multi-tenant SaaS | **Hecho.** `Capabilities.MaxOutput`/`MaxCallDepth` (límites duros en la VM), reset de estado de host transitorio entre ejecuciones, preset `Sandboxed()` y API `RunSandboxed`; patrón un-Engine-por-tenant documentado (docs/vmpas.md) + ejemplo `examples/multitenant`. | Alta |
+| N8 ✅ | Expandir stdlib (ERP/contabilidad/stock/RRHH/CMS/DMS) | **Hecho.** Redondeo/IVA/porcentajes, días hábiles/edad/fin-de-mes/día-de-semana, padding/replace/máscaras de dígitos, validaciones numéricas, split. Verticales como paquetes aparte. | Media |
 
 > **Bus-factor:** la base de productos propietarios depende de un solo
 > mantenedor. Mitigación recomendada: documentar la arquitectura interna,
