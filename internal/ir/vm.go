@@ -21,7 +21,7 @@ type Value struct {
 	Bool  bool
 	Ch    byte
 	Str   string
-	Set   [32]byte
+	Set   *[32]byte // set bitmap, allocated lazily (nil = empty set)
 	Array []Value
 	Rec   map[string]*Value // record fields, each an addressable cell
 	Ptr   int64             // address in the heap (negative = nil)
@@ -71,7 +71,8 @@ func (v Value) String() string {
 	case VKSet:
 		var b strings.Builder
 		b.WriteString("[")
-		for i, x := range v.Set {
+		bits := setBits(v)
+		for i, x := range bits {
 			if x != 0 {
 				if b.Len() > 1 {
 					b.WriteString(",")
@@ -613,11 +614,20 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.Stack = append(vm.Stack, r)
 		return true
 	case OPCall:
-		fn, ok := findFunc(vm.Program, ins.S)
-		if !ok {
-			vm.RuntimeError = 3
-			vm.Halted = true
-			return false
+		// The call target is resolved by name once, then cached in the
+		// instruction so repeated calls (notably recursion) skip the map
+		// lookup. The program is immutable across runs, so the cache is
+		// valid for the lifetime of the compiled program.
+		fn := ins.Func
+		if fn == nil {
+			var ok bool
+			fn, ok = findFunc(vm.Program, ins.S)
+			if !ok {
+				vm.RuntimeError = 3
+				vm.Halted = true
+				return false
+			}
+			frame.Func.Code[frame.PC-1].Func = fn
 		}
 		// Arguments sit on the operand stack in order (arg0..argN-1); bind them
 		// positionally to the parameter slots without allocating an args slice.
@@ -656,7 +666,7 @@ func (vm *VM) Step(frame *Frame) bool {
 	case OPMkSet:
 		// Build a set from elements on the stack.
 		count := int(ins.A)
-		set := Value{Kind: VKSet}
+		set := Value{Kind: VKSet, Set: new([32]byte)}
 		for i := 0; i < count; i++ {
 			v := vm.pop()
 			idx := int(toInt(v))
@@ -968,6 +978,15 @@ func lookupMethod(p *Program, typ, method string) string {
 	return ""
 }
 
+// setBits returns the set bitmap of v by value, or a zero bitmap when the set
+// is empty (nil). Set values are cold, so the 32-byte copy is acceptable.
+func setBits(v Value) [32]byte {
+	if v.Set == nil {
+		return [32]byte{}
+	}
+	return *v.Set
+}
+
 func findFunc(p *Program, name string) (*Function, bool) {
 	for _, m := range p.Modules {
 		if f, ok := m.Funcs[name]; ok {
@@ -1052,16 +1071,16 @@ func binaryOp(op string, a, b Value) Value {
 	}
 	// Set operators: union (+), difference (-), intersection (*).
 	if a.Kind == VKSet && b.Kind == VKSet {
-		var r Value
-		r.Kind = VKSet
+		av, bv := setBits(a), setBits(b)
+		r := Value{Kind: VKSet, Set: new([32]byte)}
 		for i := 0; i < 32; i++ {
 			switch op {
 			case "+":
-				r.Set[i] = a.Set[i] | b.Set[i]
+				r.Set[i] = av[i] | bv[i]
 			case "-":
-				r.Set[i] = a.Set[i] &^ b.Set[i]
+				r.Set[i] = av[i] &^ bv[i]
 			case "*":
-				r.Set[i] = a.Set[i] & b.Set[i]
+				r.Set[i] = av[i] & bv[i]
 			}
 		}
 		return r
@@ -1145,21 +1164,22 @@ func compareOp(op string, a, b Value) Value {
 	}
 	// Set comparison: equality and subset/superset.
 	if a.Kind == VKSet && b.Kind == VKSet {
+		av, bv := setBits(a), setBits(b)
 		switch op {
 		case "=":
-			return Value{Kind: VKBool, Bool: a.Set == b.Set}
+			return Value{Kind: VKBool, Bool: av == bv}
 		case "<>":
-			return Value{Kind: VKBool, Bool: a.Set != b.Set}
+			return Value{Kind: VKBool, Bool: av != bv}
 		case "<=": // a is a subset of b
 			for i := 0; i < 32; i++ {
-				if a.Set[i]&^b.Set[i] != 0 {
+				if av[i]&^bv[i] != 0 {
 					return Value{Kind: VKBool, Bool: false}
 				}
 			}
 			return Value{Kind: VKBool, Bool: true}
 		case ">=": // a is a superset of b
 			for i := 0; i < 32; i++ {
-				if b.Set[i]&^a.Set[i] != 0 {
+				if bv[i]&^av[i] != 0 {
 					return Value{Kind: VKBool, Bool: false}
 				}
 			}
@@ -1238,7 +1258,7 @@ func inSet(a, b Value) bool {
 		return false
 	}
 	idx := int(toInt(a))
-	if idx < 0 || idx >= 256 {
+	if idx < 0 || idx >= 256 || b.Set == nil {
 		return false
 	}
 	return b.Set[idx/8]&(1<<(idx%8)) != 0

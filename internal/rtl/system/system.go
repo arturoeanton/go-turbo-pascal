@@ -535,11 +535,14 @@ func builtinDec(vm *ir.VM, args []ir.Value) ir.Value {
 }
 
 func builtinInclude(vm *ir.VM, args []ir.Value) ir.Value {
-	// Operates on sets passed by reference; in the VM we operate on a copy.
+	// Sets are copy-on-write (the bitmap is shared on copy), so produce a
+	// fresh bitmap rather than mutating the operand in place.
 	a := args[0]
 	idx := int(irToInt(args[1]))
 	if idx >= 0 && idx < 256 && a.Kind == ir.VKSet {
-		a.Set[idx/8] |= 1 << (idx % 8)
+		bits := setCopy(a)
+		bits[idx/8] |= 1 << (idx % 8)
+		a.Set = bits
 	}
 	return a
 }
@@ -548,9 +551,21 @@ func builtinExclude(vm *ir.VM, args []ir.Value) ir.Value {
 	a := args[0]
 	idx := int(irToInt(args[1]))
 	if idx >= 0 && idx < 256 && a.Kind == ir.VKSet {
-		a.Set[idx/8] &^= 1 << (idx % 8)
+		bits := setCopy(a)
+		bits[idx/8] &^= 1 << (idx % 8)
+		a.Set = bits
 	}
 	return a
+}
+
+// setCopy returns a fresh, independent bitmap for v's set (zero-filled when v
+// has no bitmap yet).
+func setCopy(v ir.Value) *[32]byte {
+	out := new([32]byte)
+	if v.Set != nil {
+		*out = *v.Set
+	}
+	return out
 }
 
 // Random generator. TP7 uses a linear congruential generator with seed
