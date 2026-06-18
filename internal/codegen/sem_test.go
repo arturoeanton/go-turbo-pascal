@@ -64,3 +64,40 @@ begin
   WriteLn(a + b + c + d);
 end.`, "10\n")
 }
+
+func TestSemLiteralTypeMismatch(t *testing.T) {
+	ce := compileErr(t, `program P;
+var age: Integer;
+begin
+  age := 'cuarenta';   { string literal a Integer }
+end.`)
+	if !strings.Contains(ce.Error(), "type mismatch") {
+		t.Fatalf("expected a type-mismatch error, got: %s", ce.Error())
+	}
+}
+
+func TestSemNumberToStringMismatch(t *testing.T) {
+	ce := compileErr(t, `program P;
+var name: string;
+begin
+  name := 42;          { numeric literal a string }
+end.`)
+	if !strings.Contains(ce.Error(), "type mismatch") {
+		t.Fatalf("expected a type-mismatch error, got: %s", ce.Error())
+	}
+}
+
+// No false positives: valid conversions and string operations must compile
+// and run (none of these assignments is a category mismatch).
+func TestSemValidAssignmentsOK(t *testing.T) {
+	check(t, `program P;
+var r: Real; c: Char; s: string; p: Currency;
+begin
+  r := 5;              { int literal -> real OK }
+  p := 19.99;          { real literal -> currency OK }
+  c := 'A';            { char/text OK }
+  s := 'a';
+  s := s + 'bc';       { concat OK (no false positive) }
+  WriteLn(c, s, ' ', CurrToStr(p));
+end.`, "Aabc 19.99\n")
+}

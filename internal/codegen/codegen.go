@@ -645,9 +645,64 @@ func (g *gen) curLoop() *loopCtx {
 // Currently the only implicit coercion is scaling a numeric value to Currency,
 // so `c := 19.99` stores exact money.
 func (g *gen) compileValueFor(target *typeInfo, expr ast.Expr) {
+	g.checkAssignable(target, expr)
 	g.compileExpr(expr)
 	if target != nil && target.kind == ktScalar && target.scalar == tCurrency {
 		g.fn.Emit(ir.Instr{Op: ir.OPToCurrency})
+	}
+}
+
+// scalarKindClass groups scalar types into broad, mutually-incompatible
+// categories for assignment checking: 1 numeric, 2 text, 3 boolean, 0 other.
+func scalarKindClass(t vtype) int {
+	switch t {
+	case tInt, tReal, tCurrency:
+		return 1
+	case tStr, tChar:
+		return 2
+	case tBool:
+		return 3
+	}
+	return 0
+}
+
+func classNamed(c int) string {
+	switch c {
+	case 1:
+		return "numeric"
+	case 2:
+		return "string/char"
+	case 3:
+		return "boolean"
+	}
+	return "?"
+}
+
+// literalClass returns the scalar category of a literal expression, or 0 for
+// non-literals. Literals carry an exact type, so checking them is free of false
+// positives (unlike inferring the type of an arbitrary expression).
+func literalClass(e ast.Expr) int {
+	switch e.(type) {
+	case *ast.IntLit, *ast.RealLit:
+		return 1 // numeric
+	case *ast.StringLit, *ast.CharLit:
+		return 2 // text
+	}
+	return 0
+}
+
+// checkAssignable flags assigning a literal of the wrong category to a scalar
+// target (e.g. a string literal into an Integer, or a number into a string).
+// It is deliberately limited to literals to stay free of false positives;
+// full expression type-compatibility needs the deeper type system (deferred).
+func (g *gen) checkAssignable(target *typeInfo, expr ast.Expr) {
+	if target == nil || (target.kind != ktScalar && target.kind != ktString) {
+		return
+	}
+	tc := scalarKindClass(target.vt())
+	ec := literalClass(expr)
+	if tc != 0 && ec != 0 && tc != ec {
+		g.errf("type mismatch: cannot assign a %s literal to a %s", classNamed(ec), classNamed(tc))
 	}
 }
 

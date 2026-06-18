@@ -50,6 +50,20 @@ velocidad **no se persigue** (irrelevante para reglas de negocio; si se toca,
 records-como-slices es el mejor ROI y ayuda a F); la concurrencia se cierra con
 `select` y se reencuadra (paralelismo a nivel host con múltiples Engines).
 
+### Trabajo de robustez (post-N, antes/junto a F)
+
+| ID | Título | Qué | Prioridad |
+|----|--------|-----|-----------|
+| N5 | Mejorar N4 | Chequeos de tipo más profundos y seguros (compat. de asignaciones por categoría). | Alta |
+| N6 | **Congelar/versionar la API de `vmpas`** | Será cimiento de varios productos propietarios; romperla los rompe. Definir la superficie pública estable, versionar (semver), tests de contrato de la API. **Riesgo si no se hace.** | Alta (futuro) |
+| N7 | Hardening multi-tenant SaaS | Correr scripts de clientes con seguridad: tope de salida, profundidad de recursión, reset entre tenants, API `RunSandboxed`; patrón un-Engine-por-tenant. | Alta |
+| N8 | Expandir stdlib (ERP/contabilidad/stock/RRHH/CMS/DMS) | Funciones genéricas de gestión: redondeo/IVA/impuestos/interés, días hábiles/edad/fin-de-mes, formato de montos, padding/máscaras, validaciones. Verticales como paquetes aparte. | Media |
+
+> **Bus-factor:** la base de productos propietarios depende de un solo
+> mantenedor. Mitigación recomendada: documentar la arquitectura interna,
+> tests de la API de embedding (N6), y evaluar abrir el *core* (no la capa de
+> producto). La capa de autoría/auditoría es donde está el valor de negocio.
+
 ## Hoja de ruta E (lenguaje moderno + determinismo)
 
 Posicionamiento del producto: **el motor de scripting embebible para Go**. La
