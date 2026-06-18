@@ -161,6 +161,53 @@ end.`); err != nil {
 	}
 }
 
+func TestJsonBuild(t *testing.T) {
+	e := New()
+	// Build a nested document, then read fields back (round-trip).
+	var name string
+	var age int
+	var active bool
+	var nested string
+	e.Var("name", &name)
+	e.Var("age", &age)
+	e.Var("active", &active)
+	e.Var("nested", &nested)
+	if err := e.Run(`program T;
+var doc, name, nested: string; age: Integer; active: Boolean;
+begin
+  doc := '{}';
+  doc := JsonSetStr(doc, 'user.name', 'alice');
+  doc := JsonSetInt(doc, 'user.age', 30);
+  doc := JsonSetBool(doc, 'user.active', true);
+  doc := JsonSetInt(doc, 'tags.0', 7);
+  doc := JsonSetInt(doc, 'tags.1', 9);
+  name   := JsonStr(doc, 'user.name');
+  age    := JsonInt(doc, 'user.age');
+  active := JsonBool(doc, 'user.active');
+  nested := JsonInt(doc, 'tags.1');  { array index round-trip via string }
+end.`); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if name != "alice" || age != 30 || !active {
+		t.Fatalf("round-trip: name=%q age=%d active=%v", name, age, active)
+	}
+	if nested != "9" {
+		t.Fatalf("tags.1 = %q, want 9", nested)
+	}
+}
+
+func TestJsonEscape(t *testing.T) {
+	e := New()
+	var out string
+	e.Var("out", &out)
+	if err := e.Run(`out := JsonEscape('he said "hi"')`); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out != `"he said \"hi\""` {
+		t.Fatalf("JsonEscape = %q", out)
+	}
+}
+
 func TestHttpBlockedByDefault(t *testing.T) {
 	if err := New().Run(`program T; var s: string; begin s := HttpGet('http://x'); end.`); err == nil {
 		t.Fatal("expected HTTP to be blocked under the default sandbox")

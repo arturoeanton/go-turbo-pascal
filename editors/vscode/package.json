@@ -2,7 +2,7 @@
   "name": "bpgo-pascal",
   "displayName": "BPGo Turbo Pascal 7",
   "description": "Turbo Pascal 7 language support (syntax highlighting + diagnostics) backed by the BPGo language server.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "bpgo",
   "engines": { "vscode": "^1.75.0" },
   "categories": ["Programming Languages"],

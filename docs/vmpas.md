@@ -149,11 +149,18 @@ HttpDelete('https://api.example.com/users/1');
 HttpRequest('OPTIONS', 'https://api.example.com', '', '');
 status := HttpLastStatus();   { código de estado de la última llamada }
 
-{ Parsear la respuesta JSON (sin capacidad: es computación pura) }
+{ Leer JSON (sin capacidad: es computación pura) }
 name := JsonStr(body, 'user.name');     { acceso por path con puntos }
 id   := JsonInt(body, 'items.0.id');    { segmento numérico = índice de array }
 len  := JsonLen(body, 'items');         { longitud de array/objeto }
 if JsonValid(body) then ...             { JsonValid / JsonBool / JsonStr / JsonInt / JsonLen }
+
+{ Construir JSON (set por path; crea objetos/arrays intermedios) }
+req := JsonSetStr('{}', 'user.name', 'bob');
+req := JsonSetInt(req, 'user.age', 25);
+req := JsonSetBool(req, 'user.active', true);
+HttpPost(url, 'application/json', req);  { -> {"user":{"active":true,"age":25,"name":"bob"}} }
+s := JsonEscape('con "comillas"');       { -> "con \"comillas\"" (para armado manual) }
 ```
 
 Bajo la capacidad `Database`, el código habla con cualquier base soportada por

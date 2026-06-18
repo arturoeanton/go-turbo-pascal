@@ -35,11 +35,14 @@ func main() {
 	eng.UseDB(db)
 
 	url := srv.URL
-	var body string
+	var body, req string
 	if err := eng.Var("url", &url); err != nil {
 		panic(err)
 	}
 	if err := eng.Var("body", &body); err != nil {
+		panic(err)
+	}
+	if err := eng.Var("req", &req); err != nil {
 		panic(err)
 	}
 
@@ -51,6 +54,12 @@ begin
   WriteLn('status: ', HttpLastStatus());
   WriteLn('user.name: ', JsonStr(body, 'user.name'));
   WriteLn('items: ', JsonLen(body, 'items'), ' (primero=', JsonInt(body, 'items.0'), ')');
+
+  { Construir un JSON y enviarlo por POST }
+  req := JsonSetStr('{}', 'user.name', 'bob');
+  req := JsonSetInt(req, 'user.age', 25);
+  WriteLn('POST body: ', req);
+  WriteLn('POST resp: ', HttpPost(url, 'application/json', req));
 
   { Recorrer una consulta SQL }
   WriteLn('usuarios:');

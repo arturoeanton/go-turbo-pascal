@@ -17,9 +17,17 @@ import (
 //	JsonBool(text, path): Boolean        -> value at path as boolean
 //	JsonLen(text, path): Integer         -> length of the array/object at path
 //
+// Building (each returns the updated JSON document, creating intermediate
+// objects/arrays as needed; start from '' or '{}'):
+//
+//	JsonSetStr(text, path, value): string
+//	JsonSetInt(text, path, value): string
+//	JsonSetBool(text, path, value): string
+//	JsonEscape(value): string            -> the value JSON-encoded (with quotes)
+//
 // path is dot-separated; a numeric segment indexes into an array. An empty path
 // addresses the root. Example: JsonStr(body, 'user.name'), JsonInt(body,
-// 'items.0.id'), JsonLen(body, 'items').
+// 'items.0.id'), JsonSetStr('{}', 'user.name', 'alice').
 func registerJSON(vm *ir.VM) {
 	vm.Builtins["JsonValid"] = func(_ *ir.VM, a []ir.Value) ir.Value {
 		return ir.Value{Kind: ir.VKBool, Bool: json.Valid([]byte(jsonArg(a, 0)))}
@@ -47,6 +55,70 @@ func registerJSON(vm *ir.VM) {
 		}
 		return ir.Value{Kind: ir.VKInt, Int: 0}
 	}
+	vm.Builtins["JsonSetStr"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		return ir.Value{Kind: ir.VKStr, Str: jsonSet(jsonArg(a, 0), jsonArg(a, 1), jsonArg(a, 2))}
+	}
+	vm.Builtins["JsonSetInt"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		return ir.Value{Kind: ir.VKStr, Str: jsonSet(jsonArg(a, 0), jsonArg(a, 1), toInt64(jsonArgVal(a, 2)))}
+	}
+	vm.Builtins["JsonSetBool"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		v := jsonArgVal(a, 2)
+		return ir.Value{Kind: ir.VKStr, Str: jsonSet(jsonArg(a, 0), jsonArg(a, 1), v.Kind == ir.VKBool && v.Bool)}
+	}
+	vm.Builtins["JsonEscape"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		b, err := json.Marshal(jsonArg(a, 0))
+		if err != nil {
+			return ir.Value{Kind: ir.VKStr, Str: `""`}
+		}
+		return ir.Value{Kind: ir.VKStr, Str: string(b)}
+	}
+}
+
+func jsonArgVal(a []ir.Value, i int) ir.Value {
+	if i < len(a) {
+		return a[i]
+	}
+	return ir.Value{Kind: ir.VKNil}
+}
+
+// jsonSet parses text (treating ''/invalid as an empty object), sets value at
+// the dot-separated path creating intermediate objects/arrays as needed, and
+// returns the re-encoded JSON document.
+func jsonSet(text, path string, value any) string {
+	var root any
+	if strings.TrimSpace(text) == "" || json.Unmarshal([]byte(text), &root) != nil {
+		root = map[string]any{}
+	}
+	if strings.TrimSpace(path) == "" {
+		root = value
+	} else {
+		root = jsonSetPath(root, strings.Split(path, "."), value)
+	}
+	b, err := json.Marshal(root)
+	if err != nil {
+		return text
+	}
+	return string(b)
+}
+
+func jsonSetPath(node any, segs []string, value any) any {
+	if len(segs) == 0 {
+		return value
+	}
+	if idx, err := strconv.Atoi(segs[0]); err == nil && idx >= 0 {
+		arr, _ := node.([]any)
+		for len(arr) <= idx {
+			arr = append(arr, nil)
+		}
+		arr[idx] = jsonSetPath(arr[idx], segs[1:], value)
+		return arr
+	}
+	m, ok := node.(map[string]any)
+	if !ok {
+		m = map[string]any{}
+	}
+	m[segs[0]] = jsonSetPath(m[segs[0]], segs[1:], value)
+	return m
 }
 
 func jsonArg(a []ir.Value, i int) string {
