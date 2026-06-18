@@ -2,7 +2,7 @@
 
 A quick tour of **go-turbo-pascal**: running Pascal, embedding it in Go, the
 modern extensions (`{$MODE BPGO}`) and the integration with HTTP/JSON/SQL. For
-the short install/editor guide see [`inicio.md`](inicio.md).
+the short install/editor guide see [`getting-started.md`](getting-started.md).
 
 ## 0. Requirements and build
 
@@ -184,10 +184,10 @@ make tools && export PATH="$PWD/bin:$PATH"   # pls (LSP) and pdap (DAP)
 - **`pdap`** — breakpoints, step, variable inspection.
 - **VSCode** (LSP + debugging) and **Zed** (LSP) extensions in `editors/`.
 
-See [`editores.md`](editores.md).
+See [`editors.md`](editors.md).
 
 ## Next
 
 - Compatibility matrix and extensions: [`compatibilidad.md`](compatibility.md)
-- Compiler/VM architecture: [`arquitectura.md`](arquitectura.md)
+- Compiler/VM architecture: [`architecture.md`](architecture.md)
 - Plan and roadmap: [`plan.md`](plan.md)

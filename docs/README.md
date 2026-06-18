@@ -6,5 +6,7 @@ in two languages:
 - 🇪🇸 **Español** → [`es/`](es/README.md)
 - 🇬🇧 **English** → [`en/README.md`](en/README.md)
 
-Ambas carpetas son un espejo 1:1 (mismos archivos, distinto idioma). /
-Both folders are a 1:1 mirror (same files, different language).
+Ambas carpetas cubren los mismos temas (los nombres de archivo de `en/` están en
+inglés; los de `es/`, en español). /
+Both folders cover the same topics (filenames in `en/` are in English, those in
+`es/` are in Spanish).

@@ -4,13 +4,13 @@
 
 ## Getting started
 - [Quickstart](quickstart.md)
-- [Getting started](inicio.md)
+- [Getting started](getting-started.md)
 
 ## Embedding Pascal in Go (`pkg/vmpas`)
 - [vmpas — embedding Pascal](vmpas.md)
 - [Public API and stability](api.md)
 - [Durable execution: determinism + snapshot/resume](durable.md)
-- [Architecture](arquitectura.md)
+- [Architecture](architecture.md)
 
 ## Language
 - [match / sum types / Option](match.md)
@@ -22,9 +22,9 @@
 - [TP7 compatibility](compatibility.md)
 
 ## Tooling
-- [Editors (LSP/DAP, VSCode, Zed)](editores.md)
+- [Editors (LSP/DAP, VSCode, Zed)](editors.md)
 - [IDE](ide.md)
 
 ## Project
-- [Status and viability](estado.md)
+- [Status and viability](status.md)
 - [Plan and audit](plan.md)

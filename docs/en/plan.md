@@ -101,7 +101,7 @@ measurement calls for it.
 > **Recent progress:** A1 (compile-once/run-many in `vmpas`) ✅, A2 (frame
 > pool + args by slice; `fib(20)` from ~65k to ~88 allocs) ✅, B1 (`Crt` unit
 > wired) ✅. Cleanup: `cmd/bprun` (dead) and `internal/bgi` (empty)
-> removed; real vs legacy structure documented in `arquitectura.md`.
+> removed; real vs legacy structure documented in `architecture.md`.
 
 ## Repository audit
 

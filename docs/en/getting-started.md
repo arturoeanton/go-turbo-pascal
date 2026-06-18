@@ -64,7 +64,7 @@ make tools && export PATH="$PWD/bin:$PATH"
 - **Zed**: install the `editors/zed` extension (Install Dev Extension) for
   highlighting and diagnostics.
 
-Details in [`editores.md`](editores.md).
+Details in [`editors.md`](editors.md).
 
 ## Supported language
 
@@ -74,5 +74,5 @@ pending (`with`, typed files, etc.).
 
 ## Architecture
 
-See [`arquitectura.md`](arquitectura.md) for the
+See [`architecture.md`](architecture.md) for the
 lexer → parser → codegen → VM pipeline and how `pkg/vmpas` fits in.

@@ -272,4 +272,4 @@ vmpas uses the project's real compiler and VM. The procedural core is
 complete (procedures/functions with by-value and `var` parameters, recursion,
 records, arrays, pointers, enums, sets, control flow). In development:
 TP7's OOP object model, the units system and more of the RTL. See
-[`docs/arquitectura.md`](arquitectura.md) and the README roadmap.
+[`docs/architecture.md`](architecture.md) and the README roadmap.
