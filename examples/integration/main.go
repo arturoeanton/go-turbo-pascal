@@ -51,7 +51,7 @@ begin
   { Consumir la API y parsear el JSON de la respuesta }
   WriteLn('GET ', url);
   body := HttpGet(url);
-  WriteLn('status: ', HttpLastStatus());
+  WriteLn('status: ', HttpLastStatus);
   WriteLn('user.name: ', JsonStr(body, 'user.name'));
   WriteLn('items: ', JsonLen(body, 'items'), ' (primero=', JsonInt(body, 'items.0'), ')');
 
@@ -64,7 +64,7 @@ begin
   { Recorrer una consulta SQL }
   WriteLn('usuarios:');
   if DbOpen('SELECT id, name FROM users') then
-    while not DbEof() do
+    while not DbEof do
     begin
       WriteLn('  ', DbFieldInt(0), ' -> ', DbFieldStr(1));
       DbNext;

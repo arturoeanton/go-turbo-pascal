@@ -455,3 +455,41 @@ begin
   WriteLn('i = ', i);
 end.`, "i = 5\n")
 }
+
+func TestParameterlessCallWithoutParens(t *testing.T) {
+	// TP7: a parameterless function used in an expression is called.
+	check(t, `program P;
+function Answer: Integer;
+begin
+  Answer := 42;
+end;
+var n: Integer;
+begin
+  n := Answer;          { no parens }
+  WriteLn(Answer);      { no parens, as an argument }
+  WriteLn(n);
+end.`, "42\n42\n")
+}
+
+func TestParameterlessSelfMethodWithoutParens(t *testing.T) {
+	check(t, `program P;
+type
+  TBox = object
+    v: Integer;
+    function Get: Integer;
+    function Twice: Integer;
+  end;
+function TBox.Get: Integer;
+begin
+  Get := v;
+end;
+function TBox.Twice: Integer;
+begin
+  Twice := Get * 2;     { bare parameterless method on Self }
+end;
+var b: TBox;
+begin
+  b.v := 21;
+  WriteLn(b.Twice);
+end.`, "42\n")
+}

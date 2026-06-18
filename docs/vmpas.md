@@ -193,9 +193,11 @@ if DbError() <> '' then WriteLn('error: ', DbError());
 `DbExec(sql [, params...])` ejecuta y devuelve filas afectadas; `DbOpen` corre
 una consulta y posiciona el cursor; `DbEof`/`DbNext` iteran; `DbFieldStr(i)` /
 `DbFieldInt(i)` leen la columna `i` de la fila actual; `DbClose` cierra; y
-`DbError()` devuelve el último error. Los parámetros se pasan posicionalmente
-(placeholders `?`/`$1` según el driver). Un valor procedural sin argumentos en
-una expresión requiere paréntesis: `DbEof()`, `HttpLastStatus()`.
+`DbError` devuelve el último error. Los parámetros se pasan posicionalmente
+(placeholders `?`/`$1` según el driver). Las funciones/builtins sin parámetros
+se pueden llamar sin paréntesis (`DbEof`, `HttpLastStatus`); los paréntesis
+también son válidos. (Un **valor procedural** guardado en una variable sí
+requiere `()` para invocarlo, ya que el nombre a secas es el valor.)
 
 Los límites `MaxSteps`, `MaxHeap` y `MaxDuration` se aplican dentro de la VM y
 detienen el programa con un error de runtime (200 paso/tiempo, 203 heap) cuando

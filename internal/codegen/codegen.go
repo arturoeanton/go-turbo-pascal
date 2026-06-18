@@ -1231,6 +1231,22 @@ func (g *gen) loadVar(name string) {
 			g.fn.Emit(ir.Instr{Op: ir.OPLoadRef})
 			return
 		}
+		// A parameterless routine used in expression position is called without
+		// parentheses (TP7 allows this). Order: Self method, user function,
+		// host/RTL builtin.
+		low := strings.ToLower(name)
+		if g.curObject != nil && g.curObject.hasMethod(low) {
+			g.compileSelfMethodCall(low, nil, false)
+			return
+		}
+		if fe, ok := g.funcs[low]; ok && len(fe.params) == 0 {
+			g.fn.Emit(ir.Instr{Op: ir.OPCall, S: fe.irName, A: 0})
+			return
+		}
+		if g.externals[low] {
+			g.fn.Emit(ir.Instr{Op: ir.OPCallBuiltin, S: low, A: 0})
+			return
+		}
 		g.errf("unknown identifier %q", name)
 		return
 	}

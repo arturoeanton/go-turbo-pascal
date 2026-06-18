@@ -165,7 +165,7 @@ func Run(argv []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if opts.ShowVersion {
-		fmt.Fprintln(stdout, "BPGo 0.1.7")
+		fmt.Fprintln(stdout, "BPGo 0.1.8")
 		return 0
 	}
 	if opts.Source == "" {
