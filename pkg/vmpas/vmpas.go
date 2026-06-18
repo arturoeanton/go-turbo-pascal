@@ -37,9 +37,10 @@ import (
 // fully restricted (default-deny).
 type Capabilities struct {
 	FileSystem  bool          // allow file I/O (Assign/Reset/Rewrite/...)
-	Network     bool          // allow the HttpGet host builtin
+	Network     bool          // allow the HTTP host builtins (Http* )
 	Exec        bool          // allow the Exec host builtin (run processes)
 	Env         bool          // allow the GetEnv host builtin
+	Database    bool          // allow the SQL host builtins (Db*); needs UseDB
 	MaxSteps    int           // VM step limit (0 = engine default)
 	MaxHeap     int           // max heap allocations (0 = unlimited)
 	MaxDuration time.Duration // wall-clock execution limit (0 = none)
@@ -51,7 +52,7 @@ func Restricted() Capabilities { return Capabilities{} }
 // Full returns a capability set that allows everything (use only for trusted
 // code, e.g. a full TP7-compatible IDE).
 func Full() Capabilities {
-	return Capabilities{FileSystem: true, Network: true, Exec: true, Env: true}
+	return Capabilities{FileSystem: true, Network: true, Exec: true, Env: true, Database: true}
 }
 
 // fileBuiltins are RTL builtins gated by Capabilities.FileSystem.
@@ -74,6 +75,21 @@ type Engine struct {
 	// across runs to avoid re-registering ~100 builtins each time. Invalidated
 	// when bindings or capabilities change.
 	builtins map[string]ir.Builtin
+	// Host integration state (single-threaded per run; guarded by mu).
+	db         SQLDB     // database handle injected via UseDB (Database cap)
+	cursor     *dbCursor // active query cursor (Db* dataset-style API)
+	dbErr      string    // last DB error message (DbError)
+	httpStatus int       // status code of the last HTTP call (HttpLastStatus)
+}
+
+// UseDB binds a database handle for the Db* host builtins. The handle is the
+// host's responsibility (it brings the driver), keeping vmpas dependency-free.
+// Wrap a *sql.DB with WrapSQLDB. Has no effect unless Capabilities.Database.
+func (e *Engine) UseDB(db SQLDB) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.db = db
+	e.builtins = nil // re-register Db* builtins
 }
 
 // New creates an isolated, fully-restricted Pascal engine.

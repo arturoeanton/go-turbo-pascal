@@ -27,4 +27,16 @@ Demuestra `pkg/vmpas`: ejecutar Pascal, enlazar variables Go, mapear un
 `struct` de Go a un `record` de Pascal, llamar funciones Go desde Pascal y el
 sandbox de capacidades.
 
-Ver también [`../docs/inicio.md`](../docs/inicio.md).
+## Consumir APIs y SQL (`examples/integration/`)
+
+```bash
+go run ./examples/integration
+```
+
+Autocontenido y offline: levanta un servidor HTTP local y una base SQL en
+memoria, y desde Pascal consume la API (`HttpGet`/`HttpPost`/`HttpLastStatus`)
+y recorre una consulta (`DbOpen`/`DbEof`/`DbNext`/`DbFieldInt`/`DbFieldStr`)
+bajo las capacidades `Network` y `Database`.
+
+Ver también [`../docs/inicio.md`](../docs/inicio.md) y la sección de
+integración en [`../docs/vmpas.md`](../docs/vmpas.md).

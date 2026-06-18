@@ -120,18 +120,64 @@ eng := vmpas.NewWith(vmpas.Full())
 | Campo         | Efecto                                                          |
 |---------------|-----------------------------------------------------------------|
 | `FileSystem`  | habilita los builtins de archivo (Assign/Reset/...)             |
-| `Network`     | habilita el builtin de host `HttpGet(url): string`              |
+| `Network`     | habilita los builtins HTTP (`HttpGet`/`HttpPost`/`HttpLastStatus`) |
 | `Exec`        | habilita el builtin de host `Exec(comando): Integer`            |
 | `Env`         | habilita el builtin de host `GetEnv(nombre): string`            |
+| `Database`    | habilita los builtins SQL (`Db*`); requiere `UseDB`             |
 | `MaxSteps`    | límite de pasos de la VM (0 = por defecto)                      |
 | `MaxHeap`     | máximo de asignaciones de heap, `New`/punteros (0 = sin límite) |
 | `MaxDuration` | límite de tiempo de pared de ejecución (0 = sin límite)         |
 
 Las capacidades se aplican en el límite Go↔Pascal: los builtins prohibidos no
 se registran, así que llamarlos es un **error de compilación** (no un fallo en
-tiempo de ejecución). `GetEnv`, `Exec` y `HttpGet` son **extensiones de host de
-vmpas** (no forman parte de la RTL de TP7) y solo existen cuando su capacidad
-está concedida.
+tiempo de ejecución). `GetEnv`, `Exec`, los `Http*` y los `Db*` son
+**extensiones de host de vmpas** (no forman parte de la RTL de TP7) y solo
+existen cuando su capacidad está concedida.
+
+## Integración: HTTP y SQL (consumir APIs y bases de datos)
+
+Bajo la capacidad `Network`, el código Pascal puede consumir APIs:
+
+```pascal
+{ GET y POST devuelven el cuerpo de la respuesta }
+body   := HttpGet('https://api.example.com/users');
+result := HttpPost('https://api.example.com/users', 'application/json', '{"n":1}');
+status := HttpLastStatus();   { código de estado de la última llamada }
+```
+
+Bajo la capacidad `Database`, el código habla con cualquier base soportada por
+`database/sql` de Go. El host inyecta el handle (y trae el driver), así
+`pkg/vmpas` se mantiene **sin dependencias externas**:
+
+```go
+import "database/sql"
+// _ "github.com/mattn/go-sqlite3"  // el driver lo trae el host
+
+db, _ := sql.Open("sqlite3", "app.db")
+eng := vmpas.NewWith(vmpas.Capabilities{Database: true})
+eng.UseDB(vmpas.WrapSQLDB(db))   // adapta *sql.DB (solo stdlib)
+```
+
+La API SQL en Pascal es un cursor estilo dataset de Delphi:
+
+```pascal
+n := DbExec('INSERT INTO users(name) VALUES (?)', 'alice');  { filas afectadas }
+if DbOpen('SELECT id, name FROM users') then
+  while not DbEof() do
+  begin
+    WriteLn(DbFieldInt(0), ' ', DbFieldStr(1));
+    DbNext;
+  end;
+DbClose;
+if DbError() <> '' then WriteLn('error: ', DbError());
+```
+
+`DbExec(sql [, params...])` ejecuta y devuelve filas afectadas; `DbOpen` corre
+una consulta y posiciona el cursor; `DbEof`/`DbNext` iteran; `DbFieldStr(i)` /
+`DbFieldInt(i)` leen la columna `i` de la fila actual; `DbClose` cierra; y
+`DbError()` devuelve el último error. Los parámetros se pasan posicionalmente
+(placeholders `?`/`$1` según el driver). Un valor procedural sin argumentos en
+una expresión requiere paréntesis: `DbEof()`, `HttpLastStatus()`.
 
 Los límites `MaxSteps`, `MaxHeap` y `MaxDuration` se aplican dentro de la VM y
 detienen el programa con un error de runtime (200 paso/tiempo, 203 heap) cuando
