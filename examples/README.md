@@ -50,5 +50,16 @@ script en un engine fresco y acotado con `vmpas.RunSandboxed` + el preset
 tiempo). Muestra el aislamiento *share-nothing* y cómo un script malicioso
 (bucle infinito) se detiene sin colgar el host.
 
+## Ejecución durable: pausar y reanudar (`examples/durable/`)
+
+```bash
+go run ./examples/durable
+```
+
+Una regla de aprobación de gastos se ejecuta hasta que necesita una decisión
+humana: se pausa con `Suspend`, el host serializa el estado (`RunDurable` →
+`*State`), inyecta la respuesta y reanuda en un engine nuevo (`ResumeDurable`),
+continuando exactamente donde quedó. Ver [`../docs/durable.md`](../docs/durable.md).
+
 Ver también [`../docs/inicio.md`](../docs/inicio.md) y la sección de
 integración en [`../docs/vmpas.md`](../docs/vmpas.md).

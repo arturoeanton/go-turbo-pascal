@@ -593,9 +593,16 @@ func builtinRandom(vm *ir.VM, args []ir.Value) ir.Value {
 }
 
 func builtinRandomize(vm *ir.VM, args []ir.Value) ir.Value {
-	// Use a non-deterministic but reproducible seed for tests; in
-	// production we use time.Now().UnixNano() modulo.
-	vm.SetGlobal("_rand_seed", ir.Value{Kind: ir.VKInt, Int: int64(uint32(rand.Uint32()))})
+	// In deterministic mode (phase F) the seed comes from the VM config so the
+	// whole run is reproducible; otherwise it is drawn from the host entropy
+	// source as in classic TP7.
+	var seed int64
+	if vm.Deterministic {
+		seed = int64(uint32(vm.DetRandSeed))
+	} else {
+		seed = int64(uint32(rand.Uint32()))
+	}
+	vm.SetGlobal("_rand_seed", ir.Value{Kind: ir.VKInt, Int: seed})
 	return ir.Value{Kind: ir.VKInt, Int: 0}
 }
 

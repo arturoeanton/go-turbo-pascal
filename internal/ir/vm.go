@@ -182,7 +182,18 @@ type VM struct {
 	MaxCallDepth int       // max call-stack depth (0 = unlimited)
 	Deadline     time.Time // wall-clock deadline (zero = none)
 	RandomState  uint32
-	Trace        bool
+	// Deterministic, when set, makes execution fully reproducible: Randomize
+	// seeds the RNG from DetRandSeed instead of the host entropy source, so the
+	// same program + same inputs always produce the same output and the same
+	// final state. This is the basis of phase F (deterministic snapshot/resume).
+	Deterministic bool
+	DetRandSeed   int64
+	// Suspended is set by a host builtin to pause execution cleanly at the next
+	// instruction boundary (the call's return value is already on the stack and
+	// the PC has advanced), so the VM can be snapshotted and resumed exactly.
+	// It is distinct from Halted+RuntimeError: a suspended VM has no error.
+	Suspended bool
+	Trace     bool
 	Builtins     map[string]Builtin
 	Args         []string
 	framePool    []*Frame     // reusable call frames (reduces per-call allocations)
@@ -874,6 +885,13 @@ func (vm *VM) Step(frame *Frame) bool {
 		}
 		r := fn(vm, args)
 		vm.Stack = append(vm.Stack, r)
+		if vm.Suspended {
+			// A host builtin requested suspension. The return value is on the
+			// stack and the PC already points past this call, so a snapshot
+			// taken now resumes exactly at the next instruction.
+			vm.Halted = true
+			return false
+		}
 		return true
 	case OPCall:
 		// The call target is resolved by name once, then cached in the
@@ -1357,6 +1375,18 @@ func (vm *VM) runFrame(frame *Frame) {
 		if len(vm.CallStack) < base {
 			return
 		}
+		vm.Step(vm.CallStack[len(vm.CallStack)-1])
+	}
+}
+
+// RunResume continues a non-concurrent VM that was restored from a snapshot
+// (or paused via Suspended), driving the current call stack to completion or to
+// the next suspension. It clears Halted/Suspended and runs until the call stack
+// empties or the program halts again.
+func (vm *VM) RunResume() {
+	vm.Halted = false
+	vm.Suspended = false
+	for !vm.Halted && len(vm.CallStack) > 0 {
 		vm.Step(vm.CallStack[len(vm.CallStack)-1])
 	}
 }

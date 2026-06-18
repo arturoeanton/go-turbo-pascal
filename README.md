@@ -49,6 +49,7 @@ Documentación (en español):
 [match / tipos suma / Option](docs/match.md) ·
 [defer / panic / recover](docs/defer.md) ·
 [spawn / channels](docs/concurrency.md) ·
+[Ejecución durable (snapshot/resume)](docs/durable.md) ·
 [Estado y viabilidad](docs/estado.md) ·
 [Plan y auditoría](docs/plan.md) ·
 [Ejemplos](examples/README.md).

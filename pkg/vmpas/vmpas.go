@@ -46,6 +46,11 @@ type Capabilities struct {
 	MaxOutput    int           // max captured output bytes (0 = unlimited)
 	MaxCallDepth int           // max call-stack depth (0 = unlimited)
 	MaxDuration  time.Duration // wall-clock execution limit (0 = none)
+	// Deterministic makes execution fully reproducible: Randomize seeds the RNG
+	// from Seed (not host entropy), so the same source + inputs always yield the
+	// same output and state. Required for reliable snapshot/resume (phase F).
+	Deterministic bool
+	Seed          int64
 }
 
 // Sandboxed returns a safe, bounded capability set suitable for running
@@ -97,6 +102,7 @@ type Engine struct {
 	dbErr       string            // last DB error message (DbError)
 	httpStatus  int               // status code of the last HTTP call (HttpLastStatus)
 	httpHeaders map[string]string // headers applied to subsequent HTTP requests
+	suspendTag  string            // tag from the last Suspend call (durable runs)
 }
 
 // UseDB binds a database handle for the Db* host builtins. The handle is the
@@ -271,18 +277,7 @@ func (e *Engine) compileLocked(code string) (*ir.Program, error) {
 // cached builtin table and only sets up fresh per-run state (globals, stack).
 func (e *Engine) execLocked(prog *ir.Program) error {
 	vm := ir.NewVM(prog)
-	if e.caps.MaxSteps > 0 {
-		vm.MaxSteps = e.caps.MaxSteps
-	}
-	if e.caps.MaxHeap > 0 {
-		vm.MaxHeap = e.caps.MaxHeap
-	}
-	if e.caps.MaxOutput > 0 {
-		vm.MaxOutput = e.caps.MaxOutput
-	}
-	if e.caps.MaxCallDepth > 0 {
-		vm.MaxCallDepth = e.caps.MaxCallDepth
-	}
+	e.applyLimits(vm)
 	if e.caps.MaxDuration > 0 {
 		vm.Deadline = time.Now().Add(e.caps.MaxDuration)
 	}
@@ -336,7 +331,10 @@ func aliasLowercase(vm *ir.VM) {
 // (bindings are still seeded/read back by global name).
 func (e *Engine) wrap(code string) (string, error) {
 	s := strings.TrimSpace(code)
-	low := strings.ToLower(s)
+	// Recognize a full program/unit even behind leading compiler directives or
+	// comments (e.g. "{$MODE BPGO} program P; ..."), which must be compiled
+	// as-is rather than wrapped as a statement fragment.
+	low := strings.ToLower(skipLeadingComments(s))
 	if strings.HasPrefix(low, "program ") || strings.HasPrefix(low, "unit ") {
 		return s, nil
 	}
@@ -365,6 +363,30 @@ func (e *Engine) wrap(code string) (string, error) {
 	}
 	b.WriteString(body)
 	return b.String(), nil
+}
+
+// skipLeadingComments returns s with any leading whitespace and Pascal comments
+// / compiler directives ({...} or (* *)) removed, so the program/unit keyword
+// that follows them can be detected.
+func skipLeadingComments(s string) string {
+	for {
+		s = strings.TrimLeft(s, " \t\r\n")
+		switch {
+		case strings.HasPrefix(s, "{"):
+			if i := strings.IndexByte(s, '}'); i >= 0 {
+				s = s[i+1:]
+				continue
+			}
+			return s
+		case strings.HasPrefix(s, "(*"):
+			if i := strings.Index(s, "*)"); i >= 0 {
+				s = s[i+2:]
+				continue
+			}
+			return s
+		}
+		return s
+	}
 }
 
 // declarations builds Pascal type and var declarations for bound variables in
@@ -463,6 +485,16 @@ func (e *Engine) registerRuntime(vm *ir.VM) {
 			s = strings.Repeat(" ", width-len(s)) + s
 		}
 		return ir.Value{Kind: ir.VKStr, Str: s}
+	}
+	// Suspend(tag) pauses durable execution (RunDurable/ResumeDurable). It is
+	// pure control flow (no capability needed); a non-durable Run that calls it
+	// simply halts cleanly with no output past this point.
+	vm.Builtins["suspend"] = func(vm *ir.VM, args []ir.Value) ir.Value {
+		if len(args) > 0 {
+			e.suspendTag = irStr(args[0])
+		}
+		vm.Suspended = true
+		return ir.Value{Kind: ir.VKNil}
 	}
 	for n, fn := range e.funcs {
 		vm.Builtins[n] = makeBuiltin(fn)
