@@ -1210,6 +1210,8 @@ func (g *gen) compileExpr(e ast.Expr) {
 		g.fn.Emit(ir.Instr{Op: ir.OPLoadRef})
 	case *ast.AnonFunc:
 		g.compileAnonFunc(v)
+	case *ast.MatchStmt:
+		g.compileMatch(v) // expression form (m.IsExpr): leaves the arm's value
 	case *ast.AtExpr:
 		// @Routine yields a callable value (a closure with no captures).
 		if id, ok := v.Expr.(*ast.Ident); ok && g.lookup(id.Name) == nil {

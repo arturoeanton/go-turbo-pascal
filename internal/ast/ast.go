@@ -152,6 +152,7 @@ const (
 	EKIn
 	EKWriteArg
 	EKAnonFunc
+	EKMatch
 )
 
 type IntLit struct {
@@ -721,28 +722,38 @@ type ForStmt struct {
 
 // TryStmt is `try Body except Except end` or `try Body finally Finally end`.
 // Exactly one of Except/Finally is non-nil.
-// MatchStmt is `match Expr of Pattern => Stmt; ... [else Stmt;] end` ({$MODE BPGO}).
+// MatchStmt is `match Expr of Pattern [when Guard] => Body; ... [else Body;] end`
+// ({$MODE BPGO}). It is both a statement and (when IsExpr) an expression whose
+// value is the matching arm's result.
 type MatchStmt struct {
 	Base
-	Expr Expr
-	Arms []MatchArm
-	Else []Stmt
+	Expr     Expr
+	Arms     []MatchArm
+	Else     []Stmt // statement-form else body
+	ElseExpr Expr   // expression-form else value
+	IsExpr   bool   // used in expression position (arms yield values)
 }
 
-// MatchArm is one `Pattern => Body` of a match. Exactly one pattern kind applies:
-// a constructor (Ctor with optional payload Binds), a literal (Lit), or a
-// wildcard (`_`).
+// MatchArm is one arm. A constructor pattern (Ctor + payload Binds) is single;
+// value patterns (literals / constants / nullary constructors) may be
+// comma-separated alternatives (or-patterns) in Values; Wildcard is `_`. An
+// optional Guard further constrains the match. Body (statement form) or Result
+// (expression form) is the arm's action.
 type MatchArm struct {
 	Base
-	Ctor     string   // constructor name (lowercased compare), "" if not a ctor
+	Ctor     string   // constructor name, "" if not a constructor-with-payload
 	Binds    []string // payload bindings for the constructor pattern
-	Lit      Expr     // literal pattern value, nil otherwise
+	Values   []Expr   // or-pattern alternatives (literal/constant/nullary ctor)
 	Wildcard bool     // `_`
-	Body     Stmt
+	Guard    Expr     // optional `when Guard`
+	Body     Stmt     // statement form
+	Result   Expr     // expression form
 }
 
-func (MatchStmt) stmtNode()      {}
-func (MatchStmt) String() string { return "match" }
+func (MatchStmt) stmtNode()          {}
+func (MatchStmt) exprNode()          {}
+func (MatchStmt) exprKind() ExprKind { return EKMatch }
+func (MatchStmt) String() string     { return "match" }
 
 type TryStmt struct {
 	Base

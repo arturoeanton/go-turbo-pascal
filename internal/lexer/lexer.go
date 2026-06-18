@@ -38,6 +38,7 @@ const (
 	TokAt
 	TokAssign
 	TokEqual
+	TokArrow // => (match arms; {$MODE BPGO})
 	TokComment
 	TokError
 )
@@ -88,6 +89,8 @@ func (k TokenKind) String() string {
 		return ":="
 	case TokEqual:
 		return "="
+	case TokArrow:
+		return "=>"
 	case TokComment:
 		return "comment"
 	case TokError:
@@ -637,6 +640,11 @@ func (l *Lexer) scanPunct() {
 		if c == '=' && l.peek() == '=' {
 			l.advance()
 			l.emit(Token{Kind: TokOp, Text: "==", Line: line, Col: col})
+			return
+		}
+		if c == '=' && l.peek() == '>' {
+			l.advance()
+			l.emit(Token{Kind: TokArrow, Text: "=>", Line: line, Col: col})
 			return
 		}
 		if c == '=' {

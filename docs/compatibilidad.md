@@ -84,7 +84,7 @@ normales, preservando la compatibilidad.
 | Extension methods (helpers) | ✅ | `record helper for T` / `class helper for T` (estilo Delphi); despacho estático por el tipo del receptor; `Self`/campos del tipo extendido accesibles |
 | Unit tests integrados | ✅ | `test 'nombre' begin … end`; `AssertTrue`/`AssertFalse`/`AssertEqual` (una aserción fallida lanza y se reporta como FAIL); runner que imprime PASS/FAIL por test |
 | Tipos suma (ADTs) | ✅ | `type T = (A, B(Integer), C(string, Integer))`; constructores que construyen valores etiquetados; `Option` vía `Some(x)`/`None` integrados |
-| `match` / pattern matching | ✅ | `match Expr of Patrón => Stmt; … else Stmt; end`; patrones: constructor con binding por destructuring (`Some(v)`), constante/enum, literal y `_`/`else`. Statement (no expresión). Exhaustividad: no chequeada aún |
+| `match` / pattern matching | ✅ | **statement y expresión** (`x := match … end`); patrones: constructor con binding (`Some(v)`), constante/enum, literal, or-patterns (`1, 2, 3 =>`), `_`/`else`; **guards** (`P when cond =>`). Si no matchea y no hay `else`, lanza en runtime (no-exhaustivo). Exhaustividad estática: no chequeada |
 
 ## Fuera de alcance (por ahora)
 

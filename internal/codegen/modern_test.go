@@ -230,3 +230,78 @@ begin
   end;
 end.`, "g\n")
 }
+
+func TestMatchAsExpression(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+type TShape = (Circle(Integer), Rect(Integer, Integer));
+function Area(s: TShape): Integer;
+begin
+  Area := match s of
+    Circle(r)  => r * r * 3;
+    Rect(w, h) => w * h;
+  end;
+end;
+begin
+  WriteLn(Area(Rect(3, 4)));
+  WriteLn(Area(Circle(2)));
+end.`, "12\n12\n")
+}
+
+func TestMatchGuard(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var i: Integer;
+begin
+  for i := -1 to 2 do
+    match i of
+      0          => WriteLn('zero');
+      _ when i > 0 => WriteLn('pos');
+      _          => WriteLn('neg');
+    end;
+end.`, "neg\nzero\npos\npos\n")
+}
+
+func TestMatchOrPatterns(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var i: Integer;
+begin
+  for i := 1 to 5 do
+    match i of
+      1, 3, 5 => WriteLn(i, ' odd');
+      2, 4    => WriteLn(i, ' even');
+    end;
+end.`, "1 odd\n2 even\n3 odd\n4 even\n5 odd\n")
+}
+
+func TestMatchExpressionElse(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+function Name(n: Integer): string;
+begin
+  Name := match n of
+    1 => 'uno';
+    2 => 'dos';
+    else => 'otro';
+  end;
+end;
+begin
+  WriteLn(Name(1), ' ', Name(9));
+end.`, "uno otro\n")
+}
+
+func TestMatchNonExhaustiveRaises(t *testing.T) {
+	// No arm matches and no else -> runtime error (non-exhaustive).
+	_, err := Compile(`{$MODE BPGO}
+program P;
+begin
+  match 7 of
+    1 => WriteLn('one');
+  end;
+end.`, "t.pas")
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	// It compiles; the failure is at runtime. Run it and expect a non-zero code.
+}

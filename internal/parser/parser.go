@@ -1357,7 +1357,7 @@ func (p *Parser) parseStmt() ast.Stmt {
 	}
 	// {$MODE BPGO}: `match` is a contextual keyword (otherwise a plain ident).
 	if p.isContextualKw("match") {
-		return p.parseMatch()
+		return p.parseMatch(false)
 	}
 	switch t.Kind {
 	case lexer.TokKeyword:
@@ -1613,12 +1613,15 @@ func (p *Parser) parseTry() ast.Stmt {
 	return t
 }
 
-// parseMatch parses `match Expr of Pattern => Stmt; ... [else Stmt;] end`.
-// Patterns: a constructor `Ctor` / `Ctor(b1, b2)`, a literal, or `_`.
-func (p *Parser) parseMatch() ast.Stmt {
+// parseMatch parses `match Expr of Pattern [when Guard] => Body; ... [else Body;]
+// end`. asExpr selects the expression form (arm bodies and else are
+// expressions; the match yields a value). Patterns: a constructor with payload
+// bindings `Ctor(b1, b2)`, comma-separated value alternatives (literals /
+// constants / nullary constructors), or `_`.
+func (p *Parser) parseMatch(asExpr bool) *ast.MatchStmt {
 	start := p.curPos()
 	p.advance() // match
-	m := &ast.MatchStmt{Base: ast.Base{P: start}, Expr: p.parseExpr()}
+	m := &ast.MatchStmt{Base: ast.Base{P: start}, Expr: p.parseExpr(), IsExpr: asExpr}
 	p.expect(lexer.TokKeyword, "of")
 	for !p.is("end") && !p.is("else") && p.cur().Kind != lexer.TokEOF {
 		arm := ast.MatchArm{Base: ast.Base{P: p.curPos()}}
@@ -1626,41 +1629,65 @@ func (p *Parser) parseMatch() ast.Stmt {
 		case p.cur().Kind == lexer.TokIdent && p.cur().Lower == "_":
 			arm.Wildcard = true
 			p.advance()
-		case p.cur().Kind == lexer.TokIdent:
+		case p.cur().Kind == lexer.TokIdent && p.peekIsLParen():
+			// Constructor pattern with payload bindings: Ctor(b1, b2, ...).
 			arm.Ctor = p.cur().Text
 			p.advance()
-			if p.match(lexer.TokLParen) { // Ctor(bind1, bind2, ...)
-				for !p.check(lexer.TokRParen) {
-					arm.Binds = append(arm.Binds, p.expect(lexer.TokIdent).Text)
-					if !p.match(lexer.TokComma) {
-						break
-					}
+			p.expect(lexer.TokLParen)
+			for !p.check(lexer.TokRParen) {
+				arm.Binds = append(arm.Binds, p.expect(lexer.TokIdent).Text)
+				if !p.match(lexer.TokComma) {
+					break
 				}
-				p.expect(lexer.TokRParen)
 			}
+			p.expect(lexer.TokRParen)
 		default:
-			// Literal pattern (int/string/char). parsePrimary stops before the
-			// `=>` arrow (parseExpr would consume the `=` as a comparison).
-			arm.Lit = p.parsePrimary()
+			// Value alternatives (or-patterns): literals, constants, enum names
+			// or nullary constructors, comma-separated. parsePrimary stops
+			// before `=>` (parseExpr would eat the `=` as a comparison).
+			for {
+				arm.Values = append(arm.Values, p.parsePrimary())
+				if !p.match(lexer.TokComma) {
+					break
+				}
+			}
+		}
+		if p.isContextualKw("when") { // optional guard
+			p.advance()
+			arm.Guard = p.parseExpr()
 		}
 		p.matchArrow()
-		arm.Body = p.parseStmt()
+		if asExpr {
+			arm.Result = p.parseExpr()
+		} else {
+			arm.Body = p.parseStmt()
+		}
 		m.Arms = append(m.Arms, arm)
 		p.match(lexer.TokSemicolon)
 	}
 	if p.is("else") {
 		p.advance()
-		p.match(lexer.TokColon) // tolerate `else:`; `=>` not required after else
-		m.Else = p.parseStmtSeqUntil("end")
+		if asExpr {
+			p.match(lexer.TokArrow) // optional `=>` before the else value
+			m.ElseExpr = p.parseExpr()
+			p.match(lexer.TokSemicolon)
+		} else {
+			p.match(lexer.TokColon) // tolerate `else:`
+			m.Else = p.parseStmtSeqUntil("end")
+		}
 	}
 	p.expect(lexer.TokKeyword, "end")
 	return m
 }
 
-// matchArrow consumes the `=>` arrow (lexed as `=` then `>`).
+// peekIsLParen reports whether the next token is `(`.
+func (p *Parser) peekIsLParen() bool {
+	return p.pos+1 < len(p.tokens) && p.tokens[p.pos+1].Kind == lexer.TokLParen
+}
+
+// matchArrow consumes the `=>` arrow.
 func (p *Parser) matchArrow() {
-	p.expect(lexer.TokEqual)
-	p.expect(lexer.TokOp, ">")
+	p.expect(lexer.TokArrow)
 }
 
 func (p *Parser) parseWith() ast.Stmt {
@@ -1860,6 +1887,10 @@ func (p *Parser) parseIdent() ast.Expr {
 
 func (p *Parser) parsePrimary() ast.Expr {
 	t := p.cur()
+	// {$MODE BPGO}: `match ... end` as an expression yields the matching arm.
+	if p.isContextualKw("match") {
+		return p.parseMatch(true)
+	}
 	switch t.Kind {
 	case lexer.TokInt:
 		p.advance()
