@@ -82,7 +82,8 @@ Implementadas como paquetes Go conectados a la VM e importables vía `uses`. Ver
 | Componente | Estado | Doc |
 |---|---|---|
 | `pkg/vmpas` — motor embebible | ✅ | [vmpas.md](vmpas.md) |
-| Binding Go ↔ Pascal (vars, funcs, struct↔record) | ✅ | [vmpas.md](vmpas.md) |
+| Binding Go ↔ Pascal (vars, funcs, struct↔record, slices, punteros) | ✅ | [vmpas.md](vmpas.md) |
+| Extras de binding: tags de campo, `error`→excepción, referencias vivas | ✅ | [vmpas.md](vmpas.md) |
 | Sandbox de capacidades (FS/red/exec/env/db + límites) | ✅ | [seguridad.md](seguridad.md) |
 | Ejecución durable (snapshot/resume determinista) | ✅ | [durable.md](durable.md) |
 | Inferencia de capacidades (`Analyze`) + log de auditoría | ✅ | [vmpas.md](vmpas.md) |

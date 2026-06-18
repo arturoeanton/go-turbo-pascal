@@ -24,7 +24,21 @@ eng.Run(`total := total * 2`)
 
 Pasa un valor (no un puntero) para solo lectura. Los campos exportados de un
 struct se mapean a campos de record por nombre (sin distinguir mayúsculas y
-minúsculas); los slices se mapean a arreglos de base 0.
+minúsculas); los slices se mapean a arreglos de base 0. Renombra u oculta un
+campo con una etiqueta `vmpas:"name"` / `json:"name"` / `vmpas:"-"`.
+
+**Un callback del host cambió una variable vinculada pero el script no lo vio.**
+Por defecto, las variables vinculadas se copian al inicio y al final de una
+ejecución, así que las mutaciones del host a mitad de ejecución son sobrescritas
+por la copia final de vuelta. Establece `Capabilities{LiveBindings: true}` para
+sincronizar las variables vinculadas alrededor de las llamadas al host — consulta
+[live bindings](vmpas.md).
+
+**¿Cómo llegan al script los errores de las funciones de Go vinculadas?**
+Si el último resultado de una función vinculada es `error`, un error no nulo
+genera una excepción de Pascal: captúrala con `try/except`, o deja que detenga la
+ejecución (entonces `Run` devuelve el mensaje del error de Go). Consulta
+[errores: error de Go → excepción de Pascal](vmpas.md).
 
 **¿Por qué falla mi script con "unknown identifier" en tiempo de compilación?**
 De eso se trata: vmpas verifica los tipos antes de ejecutar. El nombre no está

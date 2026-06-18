@@ -1,9 +1,9 @@
 # vmpas — Pascal embebido en Go
 
-`pkg/vmpas` es un **motor de código dinámico embebible** para Go. Te permite
-ejecutar código de Turbo Pascal 7 dentro de un programa Go, enlazando variables,
+`pkg/vmpas` es un **motor de código dinámico embebible** para Go. Permite
+ejecutar código Turbo Pascal 7 dentro de un programa Go, enlazando variables,
 funciones y structs del anfitrión. A diferencia de los motores de scripting
-dinámicos (p. ej. JavaScript con goja), vmpas **compila y verifica los tipos antes
+dinámicos (p. ej. JavaScript con goja), vmpas **compila y verifica tipos antes
 de la primera ejecución**: los errores de compilación se detectan al instante,
 no en medio de una ejecución.
 
@@ -12,8 +12,8 @@ Características:
 - **Fuertemente tipado**: compilado a bytecode y validado antes de ejecutarse.
 - **Mapeo Go ↔ Pascal**: variables escalares y `struct` ↔ `record`.
 - **Llamadas bidireccionales**: Pascal puede llamar a funciones/procedimientos de Go.
-- **Sandbox de capacidades**: control granular sobre lo que el código invitado puede
-  hacer (sistema de archivos, etc.), con `Restricted` (por defecto) y `Full`.
+- **Sandbox de capacidades**: control granular sobre lo que puede hacer el código
+  invitado (sistema de archivos, etc.), con `Restricted` (por defecto) y `Full`.
 - **Cero dependencias externas**: importar `vmpas` no arrastra tcell ni la
   cadena de herramientas del editor (garantizado por un test).
 
@@ -38,14 +38,14 @@ programa completo (`program ... end.`).
 
 ## Compilar una vez, ejecutar muchas
 
-`Run` compila en cada llamada. Cuando ejecutas el mismo código repetidamente (una ruta
-caliente, un motor de reglas evaluado por petición), compílalo una sola vez en un `Script` y
-reutilízalo:
+`Run` compila en cada llamada. Cuando ejecutas el mismo código repetidamente (un
+camino caliente, un motor de reglas evaluado por petición), compílalo una vez en
+un `Script` y reutilízalo:
 
 ```go
-script, err := eng.Compile(code) // lex + parse + sem + codegen, una vez
+script, err := eng.Compile(code) // lex + parse + sem + codegen, una sola vez
 if err != nil {
-    log.Fatal(err) // todos los errores de compilación/tipos afloran aquí, de entrada
+    log.Fatal(err) // todos los errores de compilación/tipo afloran aquí, por adelantado
 }
 for _, row := range rows {
     eng.Var("row", &row)
@@ -85,9 +85,38 @@ Los campos exportados del struct se exponen como campos del record (el nombre
 se compara sin distinguir mayúsculas/minúsculas) y se copian de vuelta tras la
 ejecución.
 
-## Slices y arreglos
+### Nombres de campo con tags
 
-Un slice/arreglo de Go se mapea a un `array` de Pascal (índice basado en 0) y se copia
+Por defecto el nombre del campo en Pascal es el nombre del campo en Go. Usa un
+struct tag para elegir un nombre diferente, o para ocultar un campo. `vmpas:"…"`
+tiene prioridad sobre `json:"…"` (así que los tags JSON existentes se reutilizan
+automáticamente), y `vmpas:"-"` omite el campo:
+
+```go
+type User struct {
+    FullName string `vmpas:"name"`   // expuesto como campo de record `name`
+    Email    string `json:"email"`   // reutiliza el tag JSON -> `email`
+    Internal int    `vmpas:"-"`       // no expuesto a Pascal
+}
+```
+
+## Structs anidados y punteros
+
+Los structs anidados se mapean a records anidados, y los punteros se siguen: una
+función de Go que recibe o devuelve un `*T` funciona (un puntero nil se mapea a
+`nil` de Pascal, uno no nil al record apuntado). Los argumentos y resultados de
+tipo puntero hacen el viaje de ida y vuelta con sus campos.
+
+```go
+type Point struct{ X, Y int }
+eng.Function("SumSq", func(p *Point) int { return p.X*p.X + p.Y*p.Y })
+eng.Var("p", &Point{X: 3, Y: 4})
+eng.Run(`out := SumSq(p)`) // out == 25
+```
+
+## Slices y arrays
+
+Un slice/array de Go se mapea a un `array` de Pascal (índice base 0) y se copia
 de vuelta tras la ejecución:
 
 ```go
@@ -97,8 +126,8 @@ eng.Run(`for i := 0 to 4 do xs[i] := xs[i] * xs[i]`)
 // xs == [1 4 9 16 25]
 ```
 
-Las funciones de Go que reciben o devuelven slices también funcionan (el resultado
-se asigna a una variable `array` en Pascal).
+Las funciones de Go que reciben o devuelven slices también funcionan (el
+resultado se asigna a una variable `array` en Pascal).
 
 ## Métodos de structs de Go
 
@@ -111,7 +140,7 @@ eng.Function("Area", r.Area) // Area() int
 eng.Run(`out := Area()`)     // out == 20
 ```
 
-## Llamar funciones de Go desde Pascal
+## Llamar a funciones de Go desde Pascal
 
 ```go
 eng.Function("Duplicar", func(n int) int { return n * 2 })
@@ -123,14 +152,42 @@ eng.Run(`
 ```
 
 `Function` registra un invocable que devuelve un valor; `Process` uno que
-no lo hace (un procedimiento). Los argumentos y el resultado se convierten automáticamente
-entre Go y Pascal.
+no lo hace (un procedimiento). Los argumentos y el resultado se convierten
+automáticamente entre Go y Pascal.
+
+### Errores: `error` de Go → excepción Pascal
+
+Si el último resultado de una función de Go enlazada es un `error`, devolver un
+error no nil **lanza una excepción Pascal** en lugar de devolver un valor. El
+script puede atraparla con `try/except`; si no lo hace, la ejecución se detiene y
+`Run` devuelve el mensaje del error de Go.
+
+```go
+eng.Function("Charge", func(amount int) (int, error) {
+    if amount <= 0 {
+        return 0, errors.New("amount must be positive")
+    }
+    return amount, nil
+})
+```
+
+```pascal
+try
+  total := Charge(-5);          { lanza -> salta a except }
+except
+  WriteLn('charge failed');
+end;
+```
+
+Una función cuyo único resultado es `error` se comporta como un procedimiento que
+puede lanzar. Esto hace que los fallos del anfitrión sean de primera clase en el
+script, en lugar de descartarse silenciosamente.
 
 ## Sandbox de capacidades
 
 Cada `Engine` se ejecuta bajo un sandbox. El valor por defecto (`New()` /
 `Restricted()`) **deniega** el acceso a archivos. Para permitir todo (solo código
-de confianza, p. ej. un IDE de TP7) usa `Full()`:
+confiable, p. ej. un IDE de TP7) usa `Full()`:
 
 ```go
 eng := vmpas.NewWith(vmpas.Full())
@@ -141,29 +198,53 @@ eng := vmpas.NewWith(vmpas.Full())
 | Campo         | Efecto                                                          |
 |---------------|-----------------------------------------------------------------|
 | `FileSystem`  | habilita los builtins de archivos (Assign/Reset/...)            |
-| `Network`     | habilita los builtins de HTTP (`HttpGet`/`HttpPost`/`HttpLastStatus`) |
+| `Network`     | habilita los builtins HTTP (`HttpGet`/`HttpPost`/`HttpLastStatus`) |
 | `Exec`        | habilita el builtin del anfitrión `Exec(command): Integer`      |
 | `Env`         | habilita el builtin del anfitrión `GetEnv(name): string`        |
-| `Database`    | habilita los builtins de SQL (`Db*`); requiere `UseDB`          |
+| `Database`    | habilita los builtins SQL (`Db*`); requiere `UseDB`             |
 | `MaxSteps`     | límite de pasos de la VM (0 = por defecto)                     |
-| `MaxHeap`      | máximo de asignaciones de heap, `New`/punteros (0 = sin límite)|
-| `MaxOutput`    | máximo de bytes de salida capturada (0 = sin límite)          |
-| `MaxCallDepth` | máxima profundidad de la pila de llamadas (0 = sin límite)    |
-| `MaxDuration`  | límite de tiempo de ejecución de reloj de pared (0 = sin límite) |
+| `MaxHeap`      | máximo de asignaciones de heap, `New`/punteros (0 = sin límite) |
+| `MaxOutput`    | máximo de bytes de salida capturada (0 = sin límite)           |
+| `MaxCallDepth` | profundidad máxima de la pila de llamadas (0 = sin límite)     |
+| `MaxDuration`  | límite de tiempo de ejecución de reloj (0 = sin límite)        |
 | `Deterministic` / `Seed` | ejecución reproducible (ver [durable.md](durable.md)) |
 | `Audit`        | registra cada llamada controlada (`Engine.AuditLog`); ver [durable.md](durable.md) |
+| `LiveBindings` | sincroniza las variables enlazadas con el script alrededor de las llamadas al anfitrión (ver abajo) |
 
-Las capacidades se aplican en la frontera Go↔Pascal: los builtins prohibidos no se
-registran, así que llamarlos es un **error de compilación** (no un fallo en
+Las capacidades se aplican en la frontera Go↔Pascal: los builtins prohibidos no
+se registran, así que llamarlos es un **error de compilación** (no un fallo en
 tiempo de ejecución). `GetEnv`, `Exec`, los `Http*` y los `Db*` son
 **extensiones de anfitrión de vmpas** (no forman parte del RTL de TP7) y solo
 existen cuando se concede su capacidad.
 
+## Referencias vivas
+
+Por defecto, una variable enlazada se copia al script cuando arranca una
+ejecución y se copia de vuelta cuando termina, de modo que los cambios que un
+callback del anfitrión le hace a mitad de la ejecución son sobrescritos por esa
+copia final. Habilita `LiveBindings` para mantener el enlace sincronizado
+**alrededor de cada llamada a una función/procedimiento de Go enlazado**: el
+valor actual del script se escribe de vuelta a Go antes de la llamada, y la
+mutación del anfitrión se hace visible para el script después.
+
+```go
+counter := 10
+eng := vmpas.NewWith(vmpas.Capabilities{LiveBindings: true})
+eng.Var("counter", &counter)
+eng.Process("Bump", func() { counter++ })   // muta la variable de Go
+eng.Run(`Bump; seen := counter; Bump`)       // seen == 11, counter termina en 12
+```
+
+Sin `LiveBindings`, el mismo script deja `counter` en 10 (las escrituras del
+callback se descartan con la copia de vuelta al final de la ejecución). La opción
+añade una sobrecarga por llamada proporcional al número de variables enlazadas,
+por lo que es opcional (opt-in).
+
 ## Inferencia de capacidades (`Analyze`)
 
 Antes de conceder nada, puedes descubrir estáticamente qué capacidades necesita
-realmente un script. `Analyze` compila el código y escanea los builtins que llama,
-devolviendo un `CapReport`:
+realmente un script. `Analyze` compila el código y escanea los builtins que
+llama, devolviendo un `CapReport`:
 
 ```go
 rep, err := eng.Analyze(tenantScript)
@@ -177,16 +258,17 @@ fmt.Println(rep.Required) // p. ej. [filesystem network]
 fmt.Println(rep.Calls)    // los builtins controlados que llama
 ```
 
-Úsalo para rechazar scripts que excedan una política, para mostrar a un operador qué
-tocará un script antes de aprobarlo, o para conceder el conjunto mínimo de capacidades. `Analyze`
-nunca ejecuta el código. Para un registro a posteriori de lo que realmente se ejecutó, consulta
-la capacidad `Audit` más abajo (`Engine.AuditLog`).
+Úsalo para rechazar scripts que excedan una política, para mostrar a un operador
+qué tocará un script antes de aprobarlo, o para conceder el conjunto mínimo de
+capacidades. `Analyze` nunca ejecuta el código. Para un registro a posteriori de
+lo que realmente se ejecutó, consulta la capacidad `Audit` más abajo
+(`Engine.AuditLog`).
 
 ## Multi-tenant: ejecutar scripts no confiables
 
-Para un servicio donde **cada tenant proporciona su propio script** (motor de reglas
+Para un servicio donde **cada tenant provee su propio script** (motor de reglas
 de negocio embebido), el patrón es **un motor por petición/tenant** —
-*share-nothing*: no se comparte ningún estado entre ejecuciones. El helper
+*share-nothing*: no se comparte estado entre ejecuciones. El helper
 `RunSandboxed` hace esto en una línea, sobre un motor nuevo y aislado:
 
 ```go
@@ -207,24 +289,24 @@ out, err := vmpas.RunSandboxed(tenantScript, caps)
 
 Garantías de aislamiento:
 
-- **Sin fugas entre ejecuciones**: cada `Run` crea una nueva VM (globales a cero),
-  y el estado transitorio del anfitrión (cursor SQL, último error/estado HTTP,
-  cabeceras) se reinicia al comienzo de cada ejecución. Reutilizar el mismo `Engine`
-  para varios tenants no filtra datos entre ellos.
-- **Límites estrictos**: un script que inunda la salida, recursa sin fin o entra en
-  un bucle infinito se detiene con un error en tiempo de ejecución (no agota la memoria ni
-  cuelga el proceso anfitrión).
-- **Paralelismo**: el anfitrión puede ejecutar muchos motores en distintas goroutines
-  en paralelo (un motor es de un solo hilo por ejecución; la concurrencia real
-  la proporciona el anfitrión con un motor por goroutine).
+- **Sin fugas entre ejecuciones**: cada `Run` crea una nueva VM (globales a
+  cero), y el estado transitorio del anfitrión (cursor SQL, último error/estado
+  HTTP, cabeceras) se reinicia al inicio de cada ejecución. Reutilizar el mismo
+  `Engine` para varios tenants no filtra datos entre ellos.
+- **Límites duros**: un script que inunda la salida, recurre sin fin o entra en
+  un bucle infinito se detiene con un error en tiempo de ejecución (no agota la
+  memoria ni cuelga el proceso anfitrión).
+- **Paralelismo**: el anfitrión puede ejecutar muchos motores en distintas
+  goroutines en paralelo (un motor es de un solo hilo por ejecución; la
+  concurrencia real la provee el anfitrión con un motor por goroutine).
 
 ## Integración: HTTP y SQL (consumir APIs y bases de datos)
 
 Bajo la capacidad `Network`, el código Pascal puede consumir APIs con todos los
-verbos, cabeceras (p. ej. tokens de autenticación) y parseo de JSON:
+verbos, cabeceras (p. ej. tokens de autenticación) y parsing de JSON:
 
 ```pascal
-{ Verbs: GET, POST, PUT, PATCH, DELETE, and HttpRequest for any method }
+{ Verbos: GET, POST, PUT, PATCH, DELETE, y HttpRequest para cualquier método }
 HttpSetHeader('Authorization', 'Bearer ' + token);  { header on subsequent calls }
 body   := HttpGet('https://api.example.com/users');
 result := HttpPost('https://api.example.com/users', 'application/json', '{"n":1}');
@@ -247,9 +329,10 @@ HttpPost(url, 'application/json', req);  { -> {"user":{"active":true,"age":25,"n
 s := JsonEscape('con "comillas"');       { -> "con \"comillas\"" (for manual assembly) }
 ```
 
-Bajo la capacidad `Database`, el código habla con cualquier base de datos soportada por
-el `database/sql` de Go. El anfitrión inyecta el handle (y aporta el driver), de modo que
-`pkg/vmpas` permanece **libre de dependencias externas**:
+Bajo la capacidad `Database`, el código habla con cualquier base de datos
+soportada por el `database/sql` de Go. El anfitrión inyecta el handle (y aporta
+el driver), de modo que `pkg/vmpas` se mantiene **libre de dependencias
+externas**:
 
 ```go
 import "database/sql"
@@ -260,7 +343,7 @@ eng := vmpas.NewWith(vmpas.Capabilities{Database: true})
 eng.UseDB(vmpas.WrapSQLDB(db))   // adapta *sql.DB (solo stdlib)
 ```
 
-La API de SQL en Pascal es un cursor estilo dataset de Delphi:
+La API SQL en Pascal es un cursor estilo dataset de Delphi:
 
 ```pascal
 n := DbExec('INSERT INTO users(name) VALUES (?)', 'alice');  { affected rows }
@@ -274,18 +357,19 @@ DbClose;
 if DbError() <> '' then WriteLn('error: ', DbError());
 ```
 
-`DbExec(sql [, params...])` ejecuta y devuelve las filas afectadas; `DbOpen` ejecuta
-una consulta y posiciona el cursor; `DbEof`/`DbNext` iteran; `DbFieldStr(i)` /
-`DbFieldInt(i)` leen la columna `i` de la fila actual; `DbClose` cierra; y
-`DbError` devuelve el último error. Los parámetros se pasan posicionalmente
-(marcadores `?`/`$1` según el driver). Las funciones/builtins sin parámetros
-pueden llamarse sin paréntesis (`DbEof`, `HttpLastStatus`); los paréntesis
-también son válidos. (Un **valor procedural** almacenado en una variable sí
-requiere `()` para invocarlo, ya que el nombre desnudo es el valor.)
+`DbExec(sql [, params...])` ejecuta y devuelve las filas afectadas; `DbOpen`
+ejecuta una consulta y posiciona el cursor; `DbEof`/`DbNext` iteran;
+`DbFieldStr(i)` / `DbFieldInt(i)` leen la columna `i` de la fila actual;
+`DbClose` cierra; y `DbError` devuelve el último error. Los parámetros se pasan
+posicionalmente (placeholders `?`/`$1` según el driver). Las funciones/builtins
+sin parámetros pueden llamarse sin paréntesis (`DbEof`, `HttpLastStatus`); los
+paréntesis también son válidos. (Un **valor procedural** almacenado en una
+variable sí requiere `()` para invocarlo, ya que el nombre desnudo es el valor.)
 
 Los límites `MaxSteps`, `MaxHeap` y `MaxDuration` se aplican dentro de la VM y
-detienen el programa con un error en tiempo de ejecución (200 paso/tiempo, 203 heap) cuando
-se exceden. Ejemplo de una configuración estricta con topes de tiempo y memoria:
+detienen el programa con un error en tiempo de ejecución (200 paso/tiempo, 203
+heap) cuando se exceden. Ejemplo de una configuración estricta con techos de
+tiempo y memoria:
 
 ```go
 eng := vmpas.NewWith(vmpas.Capabilities{
@@ -312,13 +396,15 @@ go run ./examples/embed
 
 ## Estado y limitaciones
 
-vmpas se ejecuta sobre el compilador y la VM reales del proyecto. El núcleo procedural y el
-modelo de objetos OOP de TP7 están completos (procedimientos/funciones con parámetros por valor, `var` y
-`const`, recursión, records, arreglos, punteros, enums, conjuntos, control de flujo
-completo, tipos `object` con herencia, despacho virtual, constructores e
-`inherited`), así como el sistema de unidades `uses` y la E/S de archivos de texto/tipados.
+vmpas se ejecuta sobre el compilador y la VM reales del proyecto. El núcleo
+procedural y el modelo de objetos OOP de TP7 están completos
+(procedimientos/funciones con parámetros por valor, `var` y `const`, recursión,
+records, arrays, punteros, enums, sets, control de flujo completo, tipos
+`object` con herencia, despacho virtual, constructores e `inherited`), al igual
+que el sistema de unidades `uses` y la E/S de archivos de texto/tipados.
 
 Limitación conocida: `inherited` se soporta como sentencia (`inherited Init(a)`)
 pero todavía no dentro de una expresión (`x := inherited Foo + y`). Consulta la
-[matriz de compatibilidad](compatibility.md) para el detalle completo por característica y
-[arquitectura](arquitectura.md) para ver cómo encajan las piezas.
+[matriz de compatibilidad](compatibility.md) para el detalle completo por
+característica y la [arquitectura](arquitectura.md) para ver cómo encajan las
+piezas.

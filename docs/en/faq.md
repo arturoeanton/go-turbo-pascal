@@ -23,7 +23,19 @@ eng.Run(`total := total * 2`)
 ```
 
 Pass a value (not a pointer) for read-only. Exported struct fields map to record
-fields by name (case-insensitive); slices map to 0-based arrays.
+fields by name (case-insensitive); slices map to 0-based arrays. Rename or hide a
+field with a `vmpas:"name"` / `json:"name"` / `vmpas:"-"` tag.
+
+**A host callback changed a bound variable but the script didn't see it.**
+By default bound variables are copied in at the start and out at the end of a run,
+so mid-run host mutations are overwritten by the final copy-back. Set
+`Capabilities{LiveBindings: true}` to sync bound variables around host calls — see
+[live bindings](vmpas.md).
+
+**How do errors from bound Go functions reach the script?**
+If a bound function's last result is `error`, a non-nil error raises a Pascal
+exception: catch it with `try/except`, or let it stop the run (then `Run` returns
+the Go error message). See [errors: Go error → Pascal exception](vmpas.md).
 
 **Why does my script fail with "unknown identifier" at compile time?**
 That is the point — vmpas type-checks before running. The name is undeclared, or

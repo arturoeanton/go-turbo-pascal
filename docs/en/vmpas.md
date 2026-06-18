@@ -85,6 +85,34 @@ The exported fields of the struct are exposed as record fields (the name
 is compared case-insensitively) and copied back after
 execution.
 
+### Field names with tags
+
+By default the Pascal field name is the Go field name. Use a struct tag to choose
+a different name, or to hide a field. `vmpas:"…"` takes precedence over `json:"…"`
+(so existing JSON tags are reused automatically), and `vmpas:"-"` skips the field:
+
+```go
+type User struct {
+    FullName string `vmpas:"name"`   // exposed as record field `name`
+    Email    string `json:"email"`   // reuses the JSON tag -> `email`
+    Internal int    `vmpas:"-"`       // not exposed to Pascal
+}
+```
+
+## Nested structs and pointers
+
+Nested structs map to nested records, and pointers are followed: a Go function
+that takes or returns a `*T` works (a nil pointer maps to Pascal `nil`, a non-nil
+one to the pointed-to record). Pointer arguments and results round-trip with their
+fields.
+
+```go
+type Point struct{ X, Y int }
+eng.Function("SumSq", func(p *Point) int { return p.X*p.X + p.Y*p.Y })
+eng.Var("p", &Point{X: 3, Y: 4})
+eng.Run(`out := SumSq(p)`) // out == 25
+```
+
 ## Slices and arrays
 
 A Go slice/array maps to a Pascal `array` (0-based index) and is copied
@@ -126,6 +154,34 @@ eng.Run(`
 does not (a procedure). Arguments and the result are converted automatically
 between Go and Pascal.
 
+### Errors: Go `error` → Pascal exception
+
+If a bound Go function's last result is an `error`, returning a non-nil error
+**raises a Pascal exception** instead of returning a value. The script can catch
+it with `try/except`; if it doesn't, the run stops and `Run` returns the Go error
+message.
+
+```go
+eng.Function("Charge", func(amount int) (int, error) {
+    if amount <= 0 {
+        return 0, errors.New("amount must be positive")
+    }
+    return amount, nil
+})
+```
+
+```pascal
+try
+  total := Charge(-5);          { raises -> jumps to except }
+except
+  WriteLn('charge failed');
+end;
+```
+
+A function whose only result is `error` behaves as a procedure that may raise.
+This makes host failures first-class in the script instead of being silently
+dropped.
+
 ## Capability sandbox
 
 Each `Engine` runs under a sandbox. The default value (`New()` /
@@ -152,12 +208,34 @@ eng := vmpas.NewWith(vmpas.Full())
 | `MaxDuration`  | wall-clock execution time limit (0 = no limit)                 |
 | `Deterministic` / `Seed` | reproducible execution (see [durable.md](durable.md)) |
 | `Audit`        | logs every gated call (`Engine.AuditLog`); see [durable.md](durable.md) |
+| `LiveBindings` | sync bound variables with the script around host calls (see below) |
 
 Capabilities are enforced at the Go↔Pascal boundary: forbidden builtins are not
 registered, so calling them is a **compilation error** (not a runtime
 failure). `GetEnv`, `Exec`, the `Http*` and the `Db*` are
 **vmpas host extensions** (not part of the TP7 RTL) and only
 exist when their capability is granted.
+
+## Live bindings
+
+By default a bound variable is copied into the script when a run starts and
+copied back when it ends, so changes a host callback makes to it mid-run are
+overwritten by that final copy-back. Enable `LiveBindings` to keep the binding in
+sync **around every call into a bound Go function/procedure**: the script's
+current value is written back to Go before the call, and the host's mutation is
+made visible to the script after it.
+
+```go
+counter := 10
+eng := vmpas.NewWith(vmpas.Capabilities{LiveBindings: true})
+eng.Var("counter", &counter)
+eng.Process("Bump", func() { counter++ })   // mutates the Go variable
+eng.Run(`Bump; seen := counter; Bump`)       // seen == 11, counter ends at 12
+```
+
+Without `LiveBindings` the same script leaves `counter` at 10 (the callback's
+writes are discarded by the end-of-run copy-back). The option adds per-call
+overhead proportional to the number of bound variables, so it is opt-in.
 
 ## Capability inference (`Analyze`)
 
