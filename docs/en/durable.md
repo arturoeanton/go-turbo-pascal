@@ -6,9 +6,8 @@ later. Combined with the **deterministic** mode, this gives business logic that 
 *pausable, reproducible and auditable*: workflows that wait for an approval, an
 external event or a schedule, without blocking a host thread.
 
-This is the differentiator versus typical embedded scripting engines (goja and
-the like): you not only run typed dynamic code, but you can also **suspend
-and continue** an execution like a durable state machine.
+Few embedded scripting engines offer this: you not only run typed code, you can
+also **suspend and continue** an execution like a durable state machine.
 
 ## Determinism
 

@@ -6,9 +6,9 @@ después. Combinado con el modo **determinista**, esto da lógica de negocio
 *pausable, reproducible y auditable*: workflows que esperan una aprobación, un
 evento externo o un horario, sin bloquear un hilo del host.
 
-Es el diferencial frente a motores de scripting embebidos típicos (goja y
-similares): no solo ejecutás código dinámico tipado, sino que podés **suspender
-y continuar** una ejecución como una máquina de estados durable.
+Pocos motores de scripting embebidos ofrecen esto: no solo ejecutás código
+tipado, sino que podés **suspender y continuar** una ejecución como una máquina
+de estados durable.
 
 ## Determinismo
 

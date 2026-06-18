@@ -45,13 +45,13 @@ fresh context per run:
 | Sum 1..1000 | ~252 µs, **12 allocs** | ~157 µs, 3744 allocs |
 | `fib(20)` | ~5.0 ms, 65 allocs | ~1.5 ms, 72 allocs |
 
-Honest read: **vmpas wins on memory** (12 vs 3744 allocs in the loop) but
-**goja is ~1.6–3.3× faster on time**. goja is a heavily optimized JS bytecode
-interpreter; the vmpas VM uses a tagged union (`Value`) with boxing.
-To beat goja on time would require optimizing the interpreter loop (dispatch,
-avoiding `Value` boxing, possibly a register-based design) — a major
-effort, not just wiring. The vmpas differentiators remain the
-**strong typing before execution**, the **capability sandbox** and **zero
+Honest read: vmpas **allocates far less memory** (12 vs 3744 allocs in the loop),
+while **goja is ~1.6–3.3× faster on time**. goja is a heavily optimized JS
+bytecode interpreter; the vmpas VM uses a tagged union (`Value`) with boxing.
+Closing the time gap would require optimizing the interpreter loop (dispatch,
+avoiding `Value` boxing, possibly a register-based design) — a major effort, not
+just wiring. Where vmpas adds value is elsewhere: **strong typing before
+execution**, the **capability sandbox**, durable execution and **zero
 dependencies**.
 
 ## (A) Pascal embedded in Go — delivered
@@ -61,7 +61,7 @@ dependencies**.
   and Go functions/methods callable from Pascal.
 - **compile-once / run-many** (`Engine.Compile` → `Script.Run`).
 - **Capability sandbox** (FS/net/exec/env/db + step/heap/output/time limits) and
-  **capability inference** (`Analyze`) — a real differentiator against goja.
+  **capability inference** (`Analyze`) — capabilities most embedded engines leave to the host.
 - **Durable execution**: deterministic snapshot/resume.
 - **Zero dependencies** (guaranteed by a test).
 
@@ -79,8 +79,8 @@ dependencies**.
 
 - `inherited` works as a statement but not yet inside an expression
   (`x := inherited Foo + y`). See the [compatibility matrix](compatibility.md).
-- **Performance vs goja**: vmpas wins decisively on allocations but goja is
-  ~1.6–3.3× faster in raw time (see the benchmark above). Beating it on time
+- **Performance vs goja**: vmpas allocates far less memory, while goja is
+  ~1.6–3.3× faster in raw time (see the benchmark above). Closing the time gap
   would mean reworking the interpreter dispatch — a deliberate non-goal for v1.0.0.
 - A nostalgic Turbo Pascal-style **TUI IDE** is not planned; `internal/tv` and
   `cmd/turbo` remain legacy stubs.

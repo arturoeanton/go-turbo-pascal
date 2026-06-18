@@ -16,10 +16,11 @@ implementation: no Borland binary, source, or documentation is embedded.
 
 ## Why embed Pascal?
 
-`pkg/vmpas` is a scripting engine in the spirit of [goja](https://github.com/dop251/goja)
-or [tengo](https://github.com/d5/tengo), but for Pascal. It compiles and
-type-checks the whole program **before the first instruction runs**, so a class
-of errors that dynamic engines only surface at runtime is caught up front.
+`pkg/vmpas` is an embeddable scripting engine in the spirit of the popular
+JavaScript and Lua engines for Go — but for Pascal, and **strongly typed**. It
+compiles and type-checks the whole program **before the first instruction runs**,
+so a class of errors that dynamic engines only surface at runtime is caught up
+front.
 
 What you get:
 
@@ -38,6 +39,31 @@ What you get:
   script needs before running it, and get an audit log of every gated call.
 - **Zero dependencies** — embedding Pascal never pulls anything into your build;
   a test enforces it.
+
+## When vmpas is the right fit
+
+There are excellent embeddable engines in Go already, and for many projects one
+of those is the right call. vmpas focuses on a specific combination that is
+otherwise hard to assemble in one place:
+
+> **Pascal + ahead-of-time type checking + a capability sandbox + deterministic,
+> resumable execution + zero dependencies.**
+
+Reach for it when you need to:
+
+- **Pause, persist and resume** an execution deterministically and auditably —
+  e.g. long-running workflows, step-through approvals, or migrating a computation
+  between machines (see [durable execution](docs/en/durable.md)).
+- Run **untrusted or per-tenant code** under a default-deny capability sandbox
+  with hard resource limits (see [security](docs/en/security.md)).
+- Embed a **strongly typed** language whose errors surface at compile time, not
+  mid-run.
+- Bring **Pascal** to a Go service — for legacy TP7 logic, domain rules authored
+  in Pascal, or teaching.
+
+If raw single-threaded throughput is your only metric, a mature JavaScript or Lua
+engine will likely be faster; vmpas trades a little speed for typing, isolation
+and durability. The honest numbers are in [status & benchmarks](docs/en/status.md).
 
 ## Quickstart
 

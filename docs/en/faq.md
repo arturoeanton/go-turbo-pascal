@@ -90,9 +90,9 @@ suite: `go test ./...` (600+ tests). See the
 ## Performance
 
 **Is vmpas faster than goja?**
-On **memory**, decisively (far fewer allocations). On raw **time**, goja is
-currently ~1.6–3.3× faster — it is a heavily optimized JS interpreter. vmpas's
-edge is ahead-of-time type checking, the capability sandbox, durable execution
+On **memory**, vmpas allocates far less. On raw **time**, goja is currently
+~1.6–3.3× faster — it is a heavily optimized JS interpreter. vmpas focuses
+elsewhere: ahead-of-time type checking, the capability sandbox, durable execution
 and zero dependencies. Numbers and methodology are in [status](status.md).
 
 **How do I make repeated execution fast?**

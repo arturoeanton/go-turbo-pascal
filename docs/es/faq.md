@@ -96,10 +96,10 @@ motor: `go test ./...` (más de 600 tests). Consulta la
 ## Rendimiento
 
 **¿Es vmpas más rápido que goja?**
-En **memoria**, decisivamente (muchas menos asignaciones). En **tiempo** puro,
-goja es actualmente ~1.6–3.3× más rápido — es un intérprete de JS muy optimizado.
-La ventaja de vmpas es la verificación de tipos anticipada, el sandbox de
-capacidades, la ejecución durable y la ausencia de dependencias. Las cifras y la
+En **memoria**, vmpas asigna mucho menos. En **tiempo** puro, goja es actualmente
+~1.6–3.3× más rápido — es un intérprete de JS muy optimizado. vmpas se enfoca en
+otra cosa: la verificación de tipos anticipada, el sandbox de capacidades, la
+ejecución durable y la ausencia de dependencias. Las cifras y la
 metodología están en [estado](estado.md).
 
 **¿Cómo hago rápida la ejecución repetida?**
