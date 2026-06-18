@@ -5,6 +5,7 @@
 package lsp
 
 import (
+	"errors"
 	"regexp"
 	"strconv"
 
@@ -47,9 +48,22 @@ func Analyze(src string) []Diagnostic {
 		return out
 	}
 
-	// Codegen catches type/semantic errors (unknown identifiers, etc.).
+	// Codegen catches type/semantic errors (unknown identifiers, type
+	// mismatches, ...). A CompileError carries one diagnostic per problem,
+	// each with its own source position.
 	if _, err := codegen.Compile(src, "document.pas"); err != nil {
-		out = append(out, Diagnostic{Line: 1, Col: 1, Message: err.Error()})
+		var ce *codegen.CompileError
+		if errors.As(err, &ce) {
+			for _, d := range ce.Diags {
+				line, col := d.Line, d.Col
+				if line <= 0 {
+					line, col = 1, 1
+				}
+				out = append(out, Diagnostic{Line: line, Col: col, Message: d.Msg})
+			}
+		} else {
+			out = append(out, Diagnostic{Line: 1, Col: 1, Message: err.Error()})
+		}
 	}
 	return out
 }

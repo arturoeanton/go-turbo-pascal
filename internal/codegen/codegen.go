@@ -110,7 +110,8 @@ type gen struct {
 	tmpSeq     int                          // counter for synthesized match bindings
 	concurrent bool                         // program uses spawn/channels (scheduler needed)
 	deferFlags map[*ast.DeferStmt]string    // defer statement -> its "reached" flag binding
-	errs       []string
+	curPos     ast.Pos                      // position of the node being compiled (for diagnostics)
+	errs       []Diag
 }
 
 // gotoRef is an emitted goto awaiting resolution to its label's code index.
@@ -189,13 +190,44 @@ func CompileWithOptions(src, file string, opts Options) (*ir.Program, error) {
 	}
 	g.compileProgram(prog)
 	if len(g.errs) > 0 {
-		return nil, fmt.Errorf("codegen errors: %s", strings.Join(g.errs, "; "))
+		return nil, &CompileError{Diags: g.errs}
 	}
 	return &ir.Program{Modules: []*ir.Module{g.mod}, Entry: "main", Vtables: g.vtables, Concurrent: g.concurrent}, nil
 }
 
+// Diag is a compile diagnostic with a 1-based source position (0 if unknown).
+type Diag struct {
+	Line, Col int
+	Msg       string
+}
+
+// CompileError carries every diagnostic from a failed compilation so callers
+// (the LSP, the CLI) can report each at its own position.
+type CompileError struct {
+	Diags []Diag
+}
+
+func (e *CompileError) Error() string {
+	parts := make([]string, len(e.Diags))
+	for i, d := range e.Diags {
+		if d.Line > 0 {
+			parts[i] = fmt.Sprintf("line %d col %d: %s", d.Line, d.Col, d.Msg)
+		} else {
+			parts[i] = d.Msg
+		}
+	}
+	return "codegen errors: " + strings.Join(parts, "; ")
+}
+
+// errf records a diagnostic at the position of the node currently being
+// compiled (set by compileStmt/compileExpr).
 func (g *gen) errf(format string, args ...any) {
-	g.errs = append(g.errs, fmt.Sprintf(format, args...))
+	g.errs = append(g.errs, Diag{Line: g.curPos.Line, Col: g.curPos.Col, Msg: fmt.Sprintf(format, args...)})
+}
+
+// errfAt records a diagnostic at an explicit position.
+func (g *gen) errfAt(pos ast.Pos, format string, args ...any) {
+	g.errs = append(g.errs, Diag{Line: pos.Line, Col: pos.Col, Msg: fmt.Sprintf(format, args...)})
 }
 
 // --- scope helpers ---
@@ -524,6 +556,7 @@ func (g *gen) compileStmt(s ast.Stmt) {
 	if s != nil {
 		if pos := s.Pos(); pos.Line > 0 {
 			g.fn.SourceMap[len(g.fn.Code)] = ir.SourceRef{File: pos.File, Line: pos.Line}
+			g.curPos = pos // anchor diagnostics to this statement
 		}
 	}
 	switch v := s.(type) {
@@ -1174,6 +1207,11 @@ func (g *gen) compileIncDec(c *ast.CallExpr, name string) {
 // --- expressions ---
 
 func (g *gen) compileExpr(e ast.Expr) {
+	if e != nil {
+		if pos := e.Pos(); pos.Line > 0 {
+			g.curPos = pos // anchor diagnostics to this expression
+		}
+	}
 	switch v := e.(type) {
 	case *ast.IntLit:
 		g.fn.Emit(ir.Instr{Op: ir.OPPushInt, A: v.Value})
