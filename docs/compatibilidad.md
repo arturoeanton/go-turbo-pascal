@@ -88,6 +88,22 @@ normales, preservando la compatibilidad.
 | `defer` / `panic` / `recover` | ✅ | `defer Stmt` corre al salir de la rutina (LIFO, también en panic, para cleanup); `panic(v)` lanza; `recover` (en un defer) captura el valor del panic y reanuda el retorno normal. defer en bucle corre una vez (limitación documentada) |
 | `spawn` / `Channel<T>` | ✅ | concurrencia cooperativa (scheduler de fibras propio); `spawn Stmt`, `MakeChan`/`MakeChan(n)`, `ch.Send/Receive/Close`; deadlock detectado en runtime. Sin paralelismo real ni `select` aún; globales compartidas sin sincronización. Programas sin concurrencia: cero overhead |
 
+## Motor de reglas de negocio (serie N)
+
+Pensado para usar el motor como base de scripting de negocio embebido. No
+requiere `{$MODE BPGO}` (es funcionalidad estándar).
+
+| Feature | Estado | Notas |
+|---|---|---|
+| Diagnósticos posicionados | ✅ | errores de compilación con línea/columna y múltiples por compilación (surface por LSP) |
+| Chequeo semántico | ✅ | aridad de llamadas y tipos desconocidos detectados en compilación; tipado profundo (compat. completa, exhaustividad) diferido |
+| Tipo `Currency` | ✅ | dinero exacto de punto fijo (int64 ×10000, 4 decimales); `c := 19.99` escala; `ToCurrency`; aritmética y comparación exactas; sin error de float |
+| Stdlib de negocio | ✅ | dinero (`CurrToStr`/`StrToCurr`), números (`Min`/`Max`/`Clamp`), strings (`Contains`/`StartsWith`/`EndsWith`/`IsEmpty`), fechas ISO deterministas (`DateYear`/`Month`/`Day`/`AddDays`/`DiffDays`/`Valid`) |
+
+Las fechas operan sobre strings ISO `YYYY-MM-DD` y **no leen el reloj** (la fecha
+actual la inyecta el host) para que la evaluación de reglas sea reproducible/
+auditable.
+
 ## Fuera de alcance (por ahora)
 
 Ensamblador inline, overlays, punteros far, generación de EXE MZ real y

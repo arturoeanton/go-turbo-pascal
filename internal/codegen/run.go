@@ -58,6 +58,22 @@ var builtinFuncs = map[string]string{
 	"filesize":     "filesize",
 	"filepos":      "filepos",
 	"seek":         "seek",
+	// Business stdlib (N3).
+	"currtostr":    "CurrToStr",
+	"strtocurr":    "StrToCurr",
+	"min":          "Min",
+	"max":          "Max",
+	"clamp":        "Clamp",
+	"contains":     "Contains",
+	"startswith":   "StartsWith",
+	"endswith":     "EndsWith",
+	"isempty":      "IsEmpty",
+	"dateyear":     "DateYear",
+	"datemonth":    "DateMonth",
+	"dateday":      "DateDay",
+	"dateadddays":  "DateAddDays",
+	"datediffdays": "DateDiffDays",
+	"datevalid":    "DateValid",
 }
 
 func isBuiltinFunc(name string) bool {
