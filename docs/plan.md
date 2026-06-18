@@ -30,6 +30,26 @@ Esfuerzo: S = horas · M = ~1 sesión · L = varias sesiones · XL = grande/mult
 > unit HTTP (todos los verbos + headers), JSON (leer + construir), y SQL sobre
 > `database/sql` con driver inyectado por el host (cero-deps preservado).
 
+## Hoja de ruta N (motor de reglas de negocio) — antes de F
+
+Posicionamiento decidido: el motor es **base de productos propietarios de
+scripting de negocio** (no se licencia el motor; es componente interno). En ese
+marco, el problema de "moat" desaparece (el moat es la app de negocio) y se
+prioriza lo que sirve a autores de reglas. La serie N va **antes de la Fase F**.
+
+| ID | Título | Qué | Esfuerzo | Depende |
+|----|--------|-----|----------|---------|
+| N1 | Diagnósticos IDE-grade | Infraestructura de reporte: posición línea/col en todos los errores, múltiples errores por compilación, mensajes claros, surface por LSP. | M | — |
+| N2 | Tipo `Currency`/decimal | Aritmética exacta para reglas financieras. Diseño recomendado: `Currency` estilo Delphi (int64 ×10000, 4 decimales fijos) — idiomático, exacto, rápido. | M | — |
+| N3 | Stdlib de negocio | Fechas, dinero (usa N2), validaciones, tablas de decisión. | M/L | N2 |
+| N4 | Pase de chequeo semántico/tipos | Pase semántico (cablear `internal/sem`) que cace tipos/identificadores/aridad antes de runtime; alimenta N1. Ataca el "tipado flojo". Exhaustividad de `match` y null-safety estricta (`T?`): extensiones posteriores. | L | N1 |
+
+N1 (reporte) es la base; N4 (semántico) es el cerebro que produce diagnósticos
+ricos sobre esa base. Sobre las debilidades de velocidad y concurrencia: la
+velocidad **no se persigue** (irrelevante para reglas de negocio; si se toca,
+records-como-slices es el mejor ROI y ayuda a F); la concurrencia se cierra con
+`select` y se reencuadra (paralelismo a nivel host con múltiples Engines).
+
 ## Hoja de ruta E (lenguaje moderno + determinismo)
 
 Posicionamiento del producto: **el motor de scripting embebible para Go**. La
