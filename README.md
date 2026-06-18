@@ -40,6 +40,7 @@ eng.Run(`for i := 1 to 5 do total := total + i`)
 ```
 
 Documentación (en español):
+[Quickstart](docs/quickstart.md) ·
 [Inicio rápido](docs/inicio.md) ·
 [vmpas (embeber Pascal)](docs/vmpas.md) ·
 [Arquitectura](docs/arquitectura.md) ·
