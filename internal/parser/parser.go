@@ -472,7 +472,7 @@ func (p *Parser) parseType() ast.TypeExpr {
 			return &ast.StringType{Base: ast.Base{P: start}}
 		case "record":
 			return p.parseRecordType()
-		case "object", "class":
+		case "object", "class", "interface":
 			return p.parseObjectType("")
 		case "procedure", "function":
 			return p.parseProcType()
@@ -661,16 +661,16 @@ func (p *Parser) parseRecordType() ast.TypeExpr {
 func (p *Parser) parseObjectType(parentName string) ast.TypeExpr {
 	start := p.curPos()
 	isClass := p.is("class")
-	p.advance() // object | class
-	o := &ast.ObjectType{Base: ast.Base{P: start}, IsClass: isClass}
+	isInterface := p.is("interface")
+	p.advance() // object | class | interface
+	o := &ast.ObjectType{Base: ast.Base{P: start}, IsClass: isClass || isInterface, IsInterface: isInterface}
 	if p.cur().Kind == lexer.TokLParen {
 		p.advance()
 		id := p.expect(lexer.TokIdent)
 		o.Parent = id.Text
-		// Implemented interfaces (class(TParent, IFoo, IBar)) are accepted but
-		// not yet modelled.
+		// class(TParent, IFoo, IBar): the extra names are implemented interfaces.
 		for p.match(lexer.TokComma) {
-			p.expect(lexer.TokIdent)
+			o.Implements = append(o.Implements, p.expect(lexer.TokIdent).Text)
 		}
 		p.expect(lexer.TokRParen)
 	}

@@ -33,7 +33,7 @@ Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
 | `class` (estilo Delphi) | ✅ | tipo por referencia: `Create` (asigna), métodos, herencia, métodos virtuales (despacho dinámico), `Free`, nil por defecto |
 | Propiedades (`property X read F write F`) | ✅ | campo de respaldo y métodos getter/setter (`read GetX write SetX`), incl. especificadores mixtos |
 | Tipos procedurales y closures | ✅ | `type T = procedure/function(...)`, valor de rutina con `@R`, métodos anónimos `procedure/function(...) begin..end` con captura por referencia; llamar un valor en expresión requiere `()` |
-| Interfaces | ❌ | (pendiente) |
+| Interfaces | ✅ | `IFoo = interface ... end`, `class(TBase, IFoo)`, variable de tipo interfaz con despacho dinámico al tipo concreto; sin conteo de referencias ni verificación estricta de implementación (duck-typing por tag de runtime) |
 | Units (`uses`) | ✅ | interface / implementation / initialization de units de usuario |
 | `finalization` | 🚧 | se parsea, no se ejecuta |
 | Compilación separada `.tpu` | ❌ | las units se compilan desde fuente |

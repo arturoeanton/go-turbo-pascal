@@ -1011,9 +1011,11 @@ type ObjectType struct {
 	Parent     string
 	Fields     []RecordField
 	Methods    []ProcDecl
-	Properties []PropertyDef
-	IsClass    bool // `class` (reference type) vs `object` (value type)
-	Packed     bool
+	Properties  []PropertyDef
+	Implements  []string // interfaces a class implements: class(TParent, IFoo, IBar)
+	IsClass     bool     // `class` (reference type) vs `object` (value type)
+	IsInterface bool     // `interface` type (reference, methods only)
+	Packed      bool
 }
 
 // PropertyDef is `property Name: Type read ReadField write WriteField;`.
