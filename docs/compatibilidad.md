@@ -10,7 +10,7 @@ Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
 | Procedimientos y funciones | ✅ | parámetros por valor y `var`, recursión, locales, frames |
 | Resultado de función | ✅ | por nombre de función o `Result` |
 | Records | ✅ | campos, anidados, semántica de copia por valor |
-| Records variantes (`case`) | ❌ | |
+| Records variantes (`case`) | ⚠️ | campo selector y campos de cada variante aplanados y accesibles; no se fuerza el layout de unión (cada campo ocupa su propio espacio) |
 | Arrays estáticos | ✅ | rangos arbitrarios; multidimensionales como anidados (`a[i][j]`) |
 | Arrays dinámicos | ✅ | `array of T`, `SetLength`, `Length`/`High`/`Low`, índice 0-based; crecer conserva datos |
 | `for..in` | ✅ | sobre arrays y strings |

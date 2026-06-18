@@ -638,9 +638,7 @@ func (p *Parser) parseRecordType() ast.TypeExpr {
 					break
 				}
 			}
-			r.Variant = &ast.VariantPart{Base: ast.Base{P: start}, Tag: &ast.Ident{Base: ast.Base{P: start}, Name: tag.String()}, Cases: varCases}
-			// consume optional Tag type if not handled
-			_ = tp
+			r.Variant = &ast.VariantPart{Base: ast.Base{P: start}, Tag: &ast.Ident{Base: ast.Base{P: start}, Name: tag.String()}, TagType: tp, Cases: varCases}
 			break
 		}
 		names := []string{}

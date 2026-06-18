@@ -390,11 +390,37 @@ func (g *gen) constInt(e ast.Expr) int64 {
 	return 0
 }
 
-// flattenVariant adds variant-record fields to the flat field list so they
-// are addressable. This trades exact memory layout for usability.
+// flattenVariant adds the variant part of a record (the selector field and the
+// fields of every case) to the flat field list so they are all addressable. We
+// trade the exact union memory layout for usability: every variant field exists
+// independently rather than overlapping in storage. Field names are unique
+// within a record, so a name appearing in several cases is added once.
 func (g *gen) flattenVariant(v *ast.RecordType, ti *typeInfo) {
-	// The AST stores variant parts on the RecordType; we walk them defensively
-	// since their shape may vary across parser versions.
-	_ = v
-	_ = ti
+	if v.Variant == nil {
+		return
+	}
+	// Named selector field, e.g. `case kind: TKind of`.
+	if id, ok := v.Variant.Tag.(*ast.Ident); ok && id.Name != "" && v.Variant.TagType != nil {
+		g.addFieldUnique(ti, id.Name, g.resolveType(v.Variant.TagType))
+	}
+	for _, c := range v.Variant.Cases {
+		for _, f := range c.Fields {
+			ft := g.resolveType(f.Type)
+			for _, nm := range f.Names {
+				g.addFieldUnique(ti, nm, ft)
+			}
+		}
+	}
+}
+
+// addFieldUnique appends a record field unless one with the same (lowercased)
+// name already exists.
+func (g *gen) addFieldUnique(ti *typeInfo, name string, ft *typeInfo) {
+	lname := strings.ToLower(name)
+	for _, f := range ti.fields {
+		if f.lname == lname {
+			return
+		}
+	}
+	ti.fields = append(ti.fields, tfield{name: name, lname: lname, ti: ft})
 }

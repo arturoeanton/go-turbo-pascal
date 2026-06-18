@@ -876,8 +876,9 @@ type RecordField struct {
 
 type VariantPart struct {
 	Base
-	Tag   Expr
-	Cases []VariantCase
+	Tag     Expr     // selector field name (empty for an anonymous selector)
+	TagType TypeExpr // selector field type, if any
+	Cases   []VariantCase
 }
 
 type VariantCase struct {
