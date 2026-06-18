@@ -7,8 +7,12 @@
 // Pascal code can read/write them and call into the host.
 //
 // Security: every Engine runs under a capability sandbox (see Capabilities).
-// The default (New / Restricted) denies filesystem, network and process
-// access; use Full to allow everything (e.g. for a trusted TP7 IDE).
+// The default (New / Restricted) denies filesystem, network, process-exec and
+// environment access, and the sandbox can also bound execution by step count,
+// heap allocations and wall-clock time. Use Full to allow everything (e.g. for
+// a trusted TP7 IDE). Gated host builtins (GetEnv/Exec/HttpGet) are registered
+// only when their capability is granted, so under the default sandbox they are
+// simply unknown identifiers.
 //
 // vmpas has zero external dependencies (enforced by a test), so importing it
 // never pulls in the editor/IDE tooling.
@@ -21,6 +25,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/arturoeanton/go-turbo-pascal/internal/codegen"
 	"github.com/arturoeanton/go-turbo-pascal/internal/ir"
@@ -31,11 +36,13 @@ import (
 // Capabilities is the sandbox configuration for an Engine. The zero value is
 // fully restricted (default-deny).
 type Capabilities struct {
-	FileSystem bool // allow file I/O (Assign/Reset/Rewrite/...)
-	Network    bool // reserved for future network RTL
-	Exec       bool // reserved for future process-exec RTL
-	Env        bool // reserved for future environment access
-	MaxSteps   int  // VM step limit (0 = engine default)
+	FileSystem  bool          // allow file I/O (Assign/Reset/Rewrite/...)
+	Network     bool          // allow the HttpGet host builtin
+	Exec        bool          // allow the Exec host builtin (run processes)
+	Env         bool          // allow the GetEnv host builtin
+	MaxSteps    int           // VM step limit (0 = engine default)
+	MaxHeap     int           // max heap allocations (0 = unlimited)
+	MaxDuration time.Duration // wall-clock execution limit (0 = none)
 }
 
 // Restricted returns a safe, default-deny capability set.
@@ -222,6 +229,12 @@ func (e *Engine) execLocked(prog *ir.Program) error {
 	if e.caps.MaxSteps > 0 {
 		vm.MaxSteps = e.caps.MaxSteps
 	}
+	if e.caps.MaxHeap > 0 {
+		vm.MaxHeap = e.caps.MaxHeap
+	}
+	if e.caps.MaxDuration > 0 {
+		vm.Deadline = time.Now().Add(e.caps.MaxDuration)
+	}
 	vm.Builtins = e.prepareBuiltins()
 	e.seedVars(vm)
 
@@ -362,6 +375,7 @@ func (e *Engine) registerRuntime(vm *ir.VM) {
 			delete(vm.Builtins, n)
 		}
 	}
+	e.registerHostCaps(vm)
 	// Output capture (matches codegen's default Write formatting).
 	vm.Builtins["write"] = func(vm *ir.VM, args []ir.Value) ir.Value {
 		for _, a := range args {

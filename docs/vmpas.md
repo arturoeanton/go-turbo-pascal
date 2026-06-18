@@ -117,17 +117,33 @@ eng := vmpas.NewWith(vmpas.Full())
 
 `Capabilities`:
 
-| Campo        | Efecto                                              |
-|--------------|-----------------------------------------------------|
-| `FileSystem` | habilita los builtins de archivo (Assign/Reset/...) |
-| `Network`    | reservado para RTL de red                           |
-| `Exec`       | reservado para ejecución de procesos                |
-| `Env`        | reservado para acceso al entorno                    |
-| `MaxSteps`   | límite de pasos de la VM (0 = por defecto)          |
+| Campo         | Efecto                                                          |
+|---------------|-----------------------------------------------------------------|
+| `FileSystem`  | habilita los builtins de archivo (Assign/Reset/...)             |
+| `Network`     | habilita el builtin de host `HttpGet(url): string`              |
+| `Exec`        | habilita el builtin de host `Exec(comando): Integer`            |
+| `Env`         | habilita el builtin de host `GetEnv(nombre): string`            |
+| `MaxSteps`    | límite de pasos de la VM (0 = por defecto)                      |
+| `MaxHeap`     | máximo de asignaciones de heap, `New`/punteros (0 = sin límite) |
+| `MaxDuration` | límite de tiempo de pared de ejecución (0 = sin límite)         |
 
 Las capacidades se aplican en el límite Go↔Pascal: los builtins prohibidos no
 se registran, así que llamarlos es un **error de compilación** (no un fallo en
-tiempo de ejecución).
+tiempo de ejecución). `GetEnv`, `Exec` y `HttpGet` son **extensiones de host de
+vmpas** (no forman parte de la RTL de TP7) y solo existen cuando su capacidad
+está concedida.
+
+Los límites `MaxSteps`, `MaxHeap` y `MaxDuration` se aplican dentro de la VM y
+detienen el programa con un error de runtime (200 paso/tiempo, 203 heap) cuando
+se exceden. Ejemplo de configuración estricta con tope de tiempo y memoria:
+
+```go
+eng := vmpas.NewWith(vmpas.Capabilities{
+    MaxSteps:    5_000_000,
+    MaxHeap:     10_000,
+    MaxDuration: 200 * time.Millisecond,
+})
+```
 
 ## Verificación de errores antes de ejecutar
 

@@ -7,6 +7,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"time"
 )
 
 // Value is a runtime value manipulated by the IR VM. The VM uses a
@@ -154,6 +155,9 @@ type VM struct {
 	RuntimeError int
 	MaxSteps     int
 	Steps        int
+	MaxHeap      int       // max heap allocations (0 = unlimited)
+	heapAllocs   int       // heap allocations so far
+	Deadline     time.Time // wall-clock deadline (zero = none)
 	RandomState  uint32
 	Trace        bool
 	Builtins     map[string]Builtin
@@ -298,6 +302,13 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.Halted = true
 		return false
 	}
+	// Wall-clock deadline: checked every 4096 steps to keep time.Now() out
+	// of the per-instruction hot path.
+	if !vm.Deadline.IsZero() && vm.Steps&0xFFF == 0 && time.Now().After(vm.Deadline) {
+		vm.RuntimeError = 200
+		vm.Halted = true
+		return false
+	}
 	if frame.PC >= len(frame.Func.Code) {
 		vm.RuntimeError = 202
 		vm.Halted = true
@@ -420,6 +431,9 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.Stack = append(vm.Stack, Value{Kind: VKPtr, Cell: &r.Cell.Array[i]})
 		return true
 	case OPHeapAlloc:
+		if !vm.chargeHeap() {
+			return false
+		}
 		v := vm.pop()
 		cell := new(Value)
 		*cell = v
@@ -728,6 +742,9 @@ func (vm *VM) Step(frame *Frame) bool {
 		arr.Array[i] = val
 		return true
 	case OPNew:
+		if !vm.chargeHeap() {
+			return false
+		}
 		vm.Stack = append(vm.Stack, Value{Kind: VKPtr, Ptr: int64(len(vm.Heap))})
 		vm.Heap = append(vm.Heap, Value{Kind: VKRecord, Rec: map[string]*Value{}})
 		return true
@@ -871,6 +888,18 @@ func zeroValueForType(typ string) Value {
 		return Value{Kind: VKPtr}
 	}
 	return Value{Kind: VKInt}
+}
+
+// chargeHeap accounts for one heap allocation and enforces MaxHeap. It returns
+// false (halting the VM with a heap-overflow error) when the limit is exceeded.
+func (vm *VM) chargeHeap() bool {
+	vm.heapAllocs++
+	if vm.MaxHeap > 0 && vm.heapAllocs > vm.MaxHeap {
+		vm.RuntimeError = 203 // heap overflow
+		vm.Halted = true
+		return false
+	}
+	return true
 }
 
 func (vm *VM) pop() Value {
