@@ -7,7 +7,7 @@ import (
 )
 
 func TestTWindowInit(t *testing.T) {
-	w := (&TWindow{}).Init(views.TRect{views.TPoint{0, 0}, views.TPoint{20, 20}}, "Test", 1)
+	w := (&TWindow{}).Init(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 20, Y: 20}}, "Test", 1)
 	if w.Title != "Test" {
 		t.Error("Title")
 	}
@@ -20,14 +20,14 @@ func TestTWindowInit(t *testing.T) {
 }
 
 func TestTDialogInit(t *testing.T) {
-	d := (&TDialog{}).Init(views.TRect{views.TPoint{0, 0}, views.TPoint{40, 10}}, "Confirm")
+	d := (&TDialog{}).Init(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 40, Y: 10}}, "Confirm")
 	if d.State&views.StateModal == 0 {
 		t.Error("Modal flag")
 	}
 }
 
 func TestEndModal(t *testing.T) {
-	d := (&TDialog{}).Init(views.TRect{views.TPoint{0, 0}, views.TPoint{40, 10}}, "X")
+	d := (&TDialog{}).Init(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 40, Y: 10}}, "X")
 	d.EndModal(CmdOK)
 	if d.State&views.StateModal != 0 {
 		t.Error("Modal should be cleared")

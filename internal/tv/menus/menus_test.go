@@ -36,7 +36,7 @@ func TestMenuBar(t *testing.T) {
 
 func TestMenuBox(t *testing.T) {
 	m := NewMenu(NewMenuItem("Cut", 1))
-	b := NewMenuBox(m, views.TRect{views.TPoint{0, 0}, views.TPoint{10, 10}})
+	b := NewMenuBox(m, views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 10, Y: 10}})
 	if b.Frame == nil {
 		t.Error("Frame")
 	}
@@ -47,7 +47,7 @@ func TestStatusLine(t *testing.T) {
 		TStatusItemFromText("Help", 1),
 		TStatusItemFromText("Save", 2),
 	}}
-	line := NewStatusLine(views.TRect{views.TPoint{0, 0}, views.TPoint{80, 1}}, def)
+	line := NewStatusLine(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 80, Y: 1}}, def)
 	line.Update(1)
 	if len(line.Items) != 1 {
 		t.Errorf("Items: %d", len(line.Items))

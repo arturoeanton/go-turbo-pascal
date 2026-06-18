@@ -7,14 +7,14 @@ import (
 )
 
 func TestColorSelectorInit(t *testing.T) {
-	s := (&TColorSelector{}).Init(views.TRect{views.TPoint{0, 0}, views.TPoint{16, 1}})
+	s := (&TColorSelector{}).Init(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 16, Y: 1}})
 	if s.Palette[0] != 0 {
 		t.Error("Palette")
 	}
 }
 
 func TestColorSelectorSelect(t *testing.T) {
-	s := (&TColorSelector{}).Init(views.TRect{views.TPoint{0, 0}, views.TPoint{16, 1}})
+	s := (&TColorSelector{}).Init(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 16, Y: 1}})
 	s.Select(5)
 	if s.Selected() != 5 {
 		t.Error("Selected")
@@ -22,7 +22,7 @@ func TestColorSelectorSelect(t *testing.T) {
 }
 
 func TestColorSelectorBounds(t *testing.T) {
-	s := (&TColorSelector{}).Init(views.TRect{views.TPoint{0, 0}, views.TPoint{16, 1}})
+	s := (&TColorSelector{}).Init(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 16, Y: 1}})
 	s.Select(-1)
 	if s.Selected() != 0 {
 		t.Error("negative select should be ignored")
@@ -34,7 +34,7 @@ func TestColorSelectorBounds(t *testing.T) {
 }
 
 func TestColorDisplay(t *testing.T) {
-	d := (&TColorDisplay{}).Init(views.TRect{views.TPoint{0, 0}, views.TPoint{10, 1}})
+	d := (&TColorDisplay{}).Init(views.TRect{A: views.TPoint{X: 0, Y: 0}, B: views.TPoint{X: 10, Y: 1}})
 	d.SetColor(7)
 	if d.Color != 7 {
 		t.Error("Color")
