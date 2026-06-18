@@ -5,10 +5,12 @@
 ## Getting started
 - [Quickstart](quickstart.md)
 - [Getting started](getting-started.md)
+- [FAQ & troubleshooting](faq.md)
 
 ## Embedding Pascal in Go (`pkg/vmpas`)
 - [vmpas — embedding Pascal](vmpas.md)
 - [Public API and stability](api.md)
+- [Security & the capability sandbox](security.md)
 - [Durable execution: determinism + snapshot/resume](durable.md)
 - [Architecture](architecture.md)
 
@@ -23,7 +25,7 @@
 
 ## Tooling
 - [Editors (LSP/DAP, VSCode, Zed)](editors.md)
-- [IDE](ide.md)
+- [Command-line tools and debugger](ide.md)
 
 ## Project
 - [Status and viability](status.md)

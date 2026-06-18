@@ -1,13 +1,14 @@
 # Status, validation and viability
 
-Report on the validation phase prior to the TUI: what was tested, what works, and
-what is missing for the project to be viable as (A) a Pascal language embedded in
-Go and (B) a TP7 alternative in the console.
+go-turbo-pascal is at **v1.0.0**: the embeddable engine and its API are stable.
+This page records how the release was validated, the honest performance picture
+(including a direct comparison against goja), and the known limitations that
+remain.
 
 ## Validation (all green)
 
 - `go build ./...` ✅
-- `go test ./... -count=1` ✅ — **469 tests** PASS, 0 failures.
+- `go test ./... -count=1` ✅ — **600+ tests** PASS, 0 failures.
 - `gofmt -l` ✅ empty (formatted).
 - `go vet` ✅ except for warnings in the **legacy** `internal/tv` code (old
   Turbo Vision stubs, off the new path).
@@ -53,46 +54,39 @@ effort, not just wiring. The vmpas differentiators remain the
 **strong typing before execution**, the **capability sandbox** and **zero
 dependencies**.
 
-## (A) Pascal embedded in Go — VIABLE, with perf/binding work
+## (A) Pascal embedded in Go — delivered
 
-Ready:
-- Compiles and type-checks **before** executing (strong vs. dynamic engines).
-- Go↔Pascal binding: scalar variables and **structs ↔ records**, and Go functions
-  callable from Pascal.
-- **Capability sandbox** (FS/net/exec/limits) — a real differentiator against
-  goja.
+- Compiles and type-checks **before** executing (strong typing vs. dynamic engines).
+- Go↔Pascal binding: scalar variables, **structs ↔ records**, slices ↔ arrays,
+  and Go functions/methods callable from Pascal.
+- **compile-once / run-many** (`Engine.Compile` → `Script.Run`).
+- **Capability sandbox** (FS/net/exec/env/db + step/heap/output/time limits) and
+  **capability inference** (`Analyze`) — a real differentiator against goja.
+- **Durable execution**: deterministic snapshot/resume.
 - **Zero dependencies** (guaranteed by a test).
 
-To close out viability (to be clearly competitive vs goja):
-1. **compile-once / run-many API**: today `Engine.Run` recompiles on every call;
-   expose a reusable compiled program.
-2. **Micro-optimize calls**: frame pool, avoid allocating slot slices
-   per call (reduces the ~65k allocs of `fib(20)`).
-3. **More type mapping**: Go↔Pascal slices/arrays and maps, pointers to struct,
-   expose Go struct methods as object methods.
-4. **Direct benchmark vs goja** to publish numbers.
+## (B) TP7 in the console — delivered
 
-## (B) TP7 alternative in the console — VIABLE for the console; RTL pieces missing
+- Procedural + **OOP** + full control flow + **console and text/typed-file I/O**
+  + a real **units** system (`uses`).
+- The `Crt` unit (`ClrScr`/`GotoXY`/colors/`KeyPressed`/`ReadKey`), `with`,
+  variant records, `ShortString[N]` with 1-based indexing, set operators and
+  `goto`/`label` all work.
+- `pasrun` runs real `.pas`; modern tooling (LSP + DAP debugging) works in VSCode
+  and Zed.
 
-Ready:
-- Procedural + **OOP** + control flow + **console and text-file
-  I/O** + **units** (`uses`).
-- `pasrun` runs real `.pas`; modern tooling (LSP + DAP debugging) in
-  VSCode.
+## Known limitations
 
-For a faithful TP7 console experience, what is missing (suggested order):
-1. **Functional `Crt` unit**: `ClrScr`, `GotoXY`, colors, `KeyPressed`/`ReadKey`
-   — it is what TP7 console apps use most.
-2. **`with`**, **typed/binary files**, **variant records**.
-3. **Strings**: `ShortString[N]` semantics and 1-based character indexing.
-4. **Sets**: set operators `+ - *` (today: literals and `in`).
-5. **`goto`/`label`**.
-6. (deferred) the Turbo Pascal-style **TUI IDE**.
+- `inherited` works as a statement but not yet inside an expression
+  (`x := inherited Foo + y`). See the [compatibility matrix](compatibility.md).
+- **Performance vs goja**: vmpas wins decisively on allocations but goja is
+  ~1.6–3.3× faster in raw time (see the benchmark above). Beating it on time
+  would mean reworking the interpreter dispatch — a deliberate non-goal for v1.0.0.
+- A nostalgic Turbo Pascal-style **TUI IDE** is not planned; `internal/tv` and
+  `cmd/turbo` remain legacy stubs.
 
 ## Verdict
 
-Both directions are **viable** and the core is solid and tested. For (A) the
-remaining work is performance and binding breadth; for (B) it is RTL coverage
-(above all `Crt`) and some language features. Neither requires redoing the
-design: they are incremental extensions on top of what is already built. See the
-[compatibility matrix](compatibility.md) for the per-feature detail.
+Both goals are met and the core is solid and tested. The remaining items are the
+narrow language gap above and raw-time performance, neither of which requires
+redesign. See the [compatibility matrix](compatibility.md) for per-feature detail.

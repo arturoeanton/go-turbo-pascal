@@ -1,110 +1,133 @@
-# Matriz de compatibilidad TP7
+# Matriz de compatibilidad con TP7
 
-Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
-🚧 parcial · ❌ no soportado (todavía).
+`go-turbo-pascal` es una implementación clean-room en Go de un front-end y motor
+compatible con Turbo Pascal 7 / Borland Pascal 7. No se incluye ningún binario,
+código fuente ni documentación de Borland. Este documento expone con honestidad
+qué funciona hoy en el **motor real** (`internal/lexer` → `parser` → `sem` →
+`codegen` → `ir` VM) y qué es legacy o queda fuera de alcance.
 
-## Lenguaje
+> **Cómo leer esto.** "Soportado" significa que compila y se ejecuta en el motor
+> y está cubierto por pruebas en `internal/codegen`, `internal/ir`,
+> `internal/e2e`, `internal/integration` o `pkg/vmpas`. Cuando hay una limitación
+> conocida, se indica de forma explícita en lugar de ocultarse.
 
-| Característica | Estado | Notas |
-|---|---|---|
-| Procedimientos y funciones | ✅ | parámetros por valor y `var`, recursión, locales, frames |
-| Resultado de función | ✅ | por nombre de función o `Result` |
-| Records | ✅ | campos, anidados, semántica de copia por valor |
-| Records variantes (`case`) | ⚠️ | campo selector y campos de cada variante aplanados y accesibles; no se fuerza el layout de unión (cada campo ocupa su propio espacio) |
-| Arrays estáticos | ✅ | rangos arbitrarios; multidimensionales como anidados (`a[i][j]`) |
-| Arrays dinámicos | ✅ | `array of T`, `SetLength`, `Length`/`High`/`Low`, índice 0-based; crecer conserva datos |
-| `for..in` | ✅ | sobre arrays y strings |
-| Arrays abiertos (open array params) | ❌ | |
-| Punteros | ✅ | `^T`, `@`, `New`/`Dispose`, deref `^`, comparación con `nil` |
-| Enumerados y subrangos | ✅ | subrango tratado como ordinal |
-| Conjuntos (sets) | ✅ | literales, `in`, operadores `+ - *`, comparación `= <> <= >=` |
-| Strings | ✅ | dinámicos (UTF-8), concatenación, I/O, indexado 1-based `s[i]`; `AnsiString`/`WideString`/`UnicodeString`/`ShortString`/`PChar` son alias del String dinámico |
-| Conversiones / SysUtils | ✅ | IntToStr, StrToInt(Def), FloatToStr, StrToFloat, UpperCase, LowerCase, Trim/TrimLeft/TrimRight, StringOfChar, Copy/Pos/Length/UpCase |
-| Char | ✅ | |
-| `if` / `case` / `for` / `while` / `repeat` | ✅ | |
-| `break` / `continue` / `exit` | ✅ | |
-| `with` (incl. `with a, b`) | ✅ | |
-| `goto` / `label` | ✅ | |
-| Excepciones (`try..except`, `try..finally`, `raise`) | ✅ | catch-all + propagación entre llamadas; `on E: T do` (handlers tipados) y binding del objeto: pendiente |
-| OOP `object` | ✅ | campos, métodos, constructor/destructor |
-| Herencia y métodos virtuales | ✅ | despacho dinámico (vtable + tag de tipo en runtime) |
-| `inherited` | 🚧 | forma sentencia (`inherited Init(...)`); en expresión: ❌ |
-| `Self` | ✅ | |
-| `class` (estilo Delphi) | ✅ | tipo por referencia: `Create` (asigna), métodos, herencia, métodos virtuales (despacho dinámico), `Free`, nil por defecto |
-| Propiedades (`property X read F write F`) | ✅ | campo de respaldo y métodos getter/setter (`read GetX write SetX`), incl. especificadores mixtos |
-| Tipos procedurales y closures | ✅ | `type T = procedure/function(...)`, valor de rutina con `@R`, métodos anónimos `procedure/function(...) begin..end` con captura por referencia; llamar un valor en expresión requiere `()` |
-| Interfaces | ✅ | `IFoo = interface ... end`, `class(TBase, IFoo)`, variable de tipo interfaz con despacho dinámico al tipo concreto; sin conteo de referencias ni verificación estricta de implementación (duck-typing por tag de runtime) |
-| Genéricos (`TList<T>`, `Max<T>`) | ✅ | tipos y rutinas genéricas por **type erasure**: el parámetro de tipo se borra a "any" (el VM es dinámicamente tipado). Sin monomorfización ni chequeo de los argumentos de tipo; la instanciación `TList<Integer>` se erasa a `TList` |
-| Sobrecarga de operadores | ✅ | forma FPC global `operator + (a, b: T): T; begin Result := ...; end;`; despacho por tipos de operandos para `+ - * /` y comparaciones; usar `Result` en el cuerpo. Operandos deben ser identificadores/campos (el tipo de un operando que es a su vez una expresión compuesta no se infiere) |
-| Units (`uses`) | ✅ | interface / implementation / initialization de units de usuario |
-| `finalization` | 🚧 | se parsea, no se ejecuta |
-| Compilación separada `.tpu` | ❌ | las units se compilan desde fuente |
-| Directivas `{$...}` | 🚧 | se parsean y se ignoran |
-| Constantes tipadas | 🚧 | |
-
-## RTL (runtime)
+## Lenguaje — núcleo procedural
 
 | Característica | Estado | Notas |
 |---|---|---|
-| `Write` / `WriteLn` | ✅ | formato de campo `x:ancho` y `x:ancho:dec` |
-| `Read` / `ReadLn` (consola) | ✅ | por referencia, parseo por tipo |
-| I/O de archivos de texto | ✅ | `Assign`/`Reset`/`Rewrite`/`Append`/`Close`/`Erase`, `Write`/`Read` a archivo, `Eof` |
-| Archivos tipados / binarios | ✅ | `file of <escalar>` (Integer/Real/Char/Boolean), registros de 8 bytes, Read/Write/Seek/FilePos/FileSize/Eof; `file of record`: pendiente |
-| Funciones de System | ✅ | `Ord` `Chr` `Abs` `Sqr` `Sqrt` `Sin` `Cos` `Ln` `Exp` `Trunc` `Round` `Length` `Copy` `Pos` `Inc` `Dec` … |
-| División real `/` vs `div` | ✅ | `/` siempre Real, `div` entera |
-| Unit `Crt` | ✅ | conectada vía `uses Crt`: ClrScr, ClrEol, GotoXY, TextColor/Background, NormVideo/HighVideo/LowVideo, Delay, ReadKey, KeyPressed, WhereX/Y, Window/Sound/NoSound (salida como ANSI) |
-| Unit `Dos` | 🚧 | implementada en Go, aún sin conectar como builtins |
+| Procedimientos y funciones | ✅ | frame propio, recursión, variables locales |
+| Parámetros: valor / `var` / `const` | ✅ | `var` es verdadero paso por referencia (aliasing de celdas) |
+| Resultado de función (asignación a `Result`/nombre) | ✅ | |
+| Enteros, `Real`, `Boolean`, `Char` | ✅ | |
+| `ShortString` (`string[N]`) | ✅ | byte de longitud + indexación basada en 1 |
+| Registros, registros anidados | ✅ | semántica de copia por valor |
+| Registros variantes (`case` en registro) | ✅ | `testdata/pas/variant.pas` |
+| Arrays estáticos, multidimensionales | ✅ | arrays anidados, indexación con comprobación de rango |
+| Enumeraciones y subrangos | ✅ | mapeo ordinal |
+| Conjuntos (`+ - *`, `in`, comparaciones) | ✅ | `testdata/pas/sets.pas` |
+| Punteros (`^T`, `@`, `New`/`Dispose`, `nil`) | ✅ | punteros a heap y a celdas |
+| Referencias de tipo forward (`PNode = ^TNode`) | ✅ | `TNode` puede declararse después |
+| Control de flujo `if`/`case`/`for`/`while`/`repeat` | ✅ | |
+| `with` | ✅ | resolución de selectores |
+| `break`/`continue`/`Exit`/`goto`/`label` | ✅ | |
+| `Inc`/`Dec`, formato `:w:d` de `Write`/`WriteLn` | ✅ | formato tipado |
 
-## Embebido y tooling
+## Lenguaje — POO (modelo de objetos de TP7)
 
 | Característica | Estado | Notas |
 |---|---|---|
-| Compilar y ejecutar (`pasrun`, `pkg/vmpas`) | ✅ | compilador real → bytecode → VM |
-| `vmpas`: binding de variables Go | ✅ | escalares y `struct` ↔ `record` |
-| `vmpas`: llamar funciones Go desde Pascal | ✅ | |
-| `vmpas`: sandbox de capacidades | ✅ | `Restricted` / `Full` (FS, etc.) |
-| LSP: diagnósticos | ✅ | `cmd/pls` |
-| LSP: hover / completion / go-to-def | ❌ | |
-| DAP: breakpoints / step / variables | ✅ | `cmd/pdap` |
-| Plugin VSCode | ✅ | sintaxis + LSP + depuración |
-| Plugin Zed | 🚧 | LSP listo; DAP pendiente de la API de Zed |
+| Tipos `object` con campos | ✅ | |
+| Herencia `object(Parent)` | ✅ | disposición de campos heredada |
+| Métodos (procedure/function) | ✅ | |
+| Métodos `virtual` + despacho dinámico | ✅ | polimorfismo real vía puntero base (VMT) |
+| `constructor` / `destructor` | ✅ | |
+| `inherited` — forma de **sentencia** | ✅ | `inherited Init(a)`, `inherited Draw` |
+| `inherited` — forma de **expresión** | ❌ | `x := inherited Foo + y` aún no se parsea |
 
-## Extensiones modernas (`{$MODE BPGO}`)
+La única limitación de POO es `inherited` usado dentro de una expresión. Como
+sentencia funciona; por eso `testdata/pas/objectpoly.pas` (que escribe
+`GetX := inherited GetX + Y`) es el único programa del corpus que se omite en las
+pruebas end-to-end de POO.
 
-Las siguientes features **no son TP7**: se activan solo con el directivo
-`{$MODE BPGO}` al inicio del fuente. Sin él, el compilador es TP7 estricto y las
-palabras nuevas (`let`, `test`, `helper`) siguen siendo identificadores
-normales, preservando la compatibilidad.
+## Lenguaje — extensiones modernas
 
-| Feature | Estado | Notas |
+Estas son adiciones de go-turbo-pascal sobre TP7, útiles al embeber:
+
+| Característica | Estado | Doc |
 |---|---|---|
-| `{$MODE BPGO}` | ✅ | gate de compatibilidad; sin él, TP7 puro |
-| Inferencia local | ✅ | `var x := expr` infiere el tipo del inicializador (y `var x: T = expr`) |
-| `let` inmutable | ✅ | `let x = expr` / `let x := expr`; reasignar es error de compilación |
-| Extension methods (helpers) | ✅ | `record helper for T` / `class helper for T` (estilo Delphi); despacho estático por el tipo del receptor; `Self`/campos del tipo extendido accesibles |
-| Unit tests integrados | ✅ | `test 'nombre' begin … end`; `AssertTrue`/`AssertFalse`/`AssertEqual` (una aserción fallida lanza y se reporta como FAIL); runner que imprime PASS/FAIL por test |
-| Tipos suma (ADTs) | ✅ | `type T = (A, B(Integer), C(string, Integer))`; constructores que construyen valores etiquetados; `Option` vía `Some(x)`/`None` integrados |
-| `match` / pattern matching | ✅ | **statement y expresión** (`x := match … end`); patrones: constructor con binding (`Some(v)`), constante/enum, literal, or-patterns (`1, 2, 3 =>`), `_`/`else`; **guards** (`P when cond =>`). Si no matchea y no hay `else`, lanza en runtime (no-exhaustivo). Exhaustividad estática: no chequeada |
-| `defer` / `panic` / `recover` | ✅ | `defer Stmt` corre al salir de la rutina (LIFO, también en panic, para cleanup); `panic(v)` lanza; `recover` (en un defer) captura el valor del panic y reanuda el retorno normal. defer en bucle corre una vez (limitación documentada) |
-| `spawn` / `Channel<T>` | ✅ | concurrencia cooperativa (scheduler de fibras propio); `spawn Stmt`, `MakeChan`/`MakeChan(n)`, `ch.Send/Receive/Close`; deadlock detectado en runtime. Sin paralelismo real ni `select` aún; globales compartidas sin sincronización. Programas sin concurrencia: cero overhead |
+| `match` / tipos suma / `Option` | ✅ | [match.md](match.md) |
+| `defer` / `panic` / `recover` | ✅ | [defer.md](defer.md) |
+| `spawn` / canales | ✅ | [concurrency.md](concurrency.md) |
 
-## Motor de reglas de negocio (serie N)
+## Biblioteca de runtime (unidades)
 
-Pensado para usar el motor como base de scripting de negocio embebido. No
-requiere `{$MODE BPGO}` (es funcionalidad estándar).
+Implementadas como paquetes Go conectados a la VM e importables vía `uses`. Ver
+[units.md](units.md) para el mapa de símbolos por unidad.
 
-| Feature | Estado | Notas |
+| Unidad | Estado | Notas |
 |---|---|---|
-| Diagnósticos posicionados | ✅ | errores de compilación con línea/columna y múltiples por compilación (surface por LSP) |
-| Chequeo semántico | ✅ | aridad de llamadas y tipos desconocidos detectados en compilación; tipado profundo (compat. completa, exhaustividad) diferido |
-| Tipo `Currency` | ✅ | dinero exacto de punto fijo (int64 ×10000, 4 decimales); `c := 19.99` escala; `ToCurrency`; aritmética y comparación exactas; sin error de float |
-| Stdlib de negocio | ✅ | dinero (`CurrToStr`/`StrToCurr`), números (`Min`/`Max`/`Clamp`), strings (`Contains`/`StartsWith`/`EndsWith`/`IsEmpty`), fechas ISO deterministas (`DateYear`/`Month`/`Day`/`AddDays`/`DiffDays`/`Valid`) |
+| `System` | ✅ | implícita; memoria, E/S, cadenas, matemáticas, ordinales, conjuntos |
+| `Crt` | ✅ | `ClrScr`/`GotoXY`/`TextColor`/`KeyPressed`/`ReadKey`, pantalla virtual 80×25 |
+| `Dos` | ✅ | fecha/hora, entorno, búsqueda de archivos, servicios en sandbox |
+| `Strings` | ✅ | helpers de `PChar` (`StrCat`, `StrComp`, …) |
+| `WinDos` | ✅ | variantes `PChar` de los servicios de Dos |
+| `Printer` | ✅ | archivo `Lst` (en memoria o respaldado por archivo) |
+| `Graph` / `Graph3` | ✅ | framebuffer por software, paleta, viewports, primitivas |
+| `Turbo3` / `Overlay` | ✅ | variables de archivo de TP3; gestor de overlays (contadores) |
+| Sistema de unidades `uses` | ✅ | interface/implementation/initialization, RTL ligado a la VM |
+| E/S de archivos (texto y tipados) | ✅ | `Assign`/`Reset`/`Rewrite`/`Read`/`Write`/`Close`/`Eof`/`Append` |
 
-Las fechas operan sobre strings ISO `YYYY-MM-DD` y **no leen el reloj** (la fecha
-actual la inyecta el host) para que la evaluación de reglas sea reproducible/
-auditable.
+## Embedding y herramientas
 
-## Fuera de alcance (por ahora)
+| Componente | Estado | Doc |
+|---|---|---|
+| `pkg/vmpas` — motor embebible | ✅ | [vmpas.md](vmpas.md) |
+| Binding Go ↔ Pascal (vars, funcs, struct↔record) | ✅ | [vmpas.md](vmpas.md) |
+| Sandbox de capacidades (FS/red/exec/env/db + límites) | ✅ | [seguridad.md](seguridad.md) |
+| Ejecución durable (snapshot/resume determinista) | ✅ | [durable.md](durable.md) |
+| Inferencia de capacidades (`Analyze`) + log de auditoría | ✅ | [vmpas.md](vmpas.md) |
+| Servidor LSP (`cmd/pls`) | ✅ | [editores.md](editores.md) |
+| Adaptador de depuración DAP (`cmd/pdap`) | ✅ | [editores.md](editores.md) |
+| Plugin de VSCode (sintaxis + LSP + depuración) | ✅ | [editores.md](editores.md) |
+| Plugin de Zed (LSP) | ✅ | [editores.md](editores.md) |
 
-Ensamblador inline, overlays, punteros far, generación de EXE MZ real y
-compatibilidad binaria con DOS.
+## Directivas de compilador
+
+Las directivas se tokenizan y se parsean; su efecto en runtime varía — ver
+[directives.md](directives.md) para la tabla por directiva. En resumen:
+interruptores como `{$R+}`/`{$I+}` se aceptan y son en su mayoría no-ops en el
+backend de bytecode; la inclusión `{$I file.inc}` y el enlazado `{$L file.obj}`
+no están conectados al backend de la VM.
+
+## Legacy / experimental (fuera del camino principal)
+
+Estos compilan y tienen pruebas pero **no** forman parte del motor soportado. Se
+conservan por historia y experimentación:
+
+| Componente | Estado |
+|---|---|
+| `internal/compile` + `internal/conformance` | harness stub mínimo detrás de `bpgo test-compat` (2 smoke tests); la cobertura real es la suite de pruebas del motor |
+| `internal/codegen8086` | emite ensamblador 8086 textual; no se ensambla a un programa ejecutable |
+| `internal/mz` | escribe una cabecera MZ EXE sintácticamente válida; sin sección de código funcional |
+| `internal/omf` | lee solo THEADR/LNAMES/SEGDEF/PUBDEF/EXTDEF |
+| `internal/tv/*` (Turbo Vision) | stubs de vista no funcionales |
+| `cmd/turbo` (IDE estilo TP7) | stub de shell interactivo/headless |
+| `cmd/tdebug` (depurador CLI) | sustituido por `cmd/pdap` / `internal/ir.Debugger` |
+
+## Fuera de alcance
+
+El ensamblador en línea, los overlays en el sentido DOS, los punteros far, la
+generación real de código MZ EXE y la compatibilidad binaria con DOS **no** son
+objetivos.
+
+## Medirlo por tu cuenta
+
+```bash
+go test ./...                 # suite completa de pruebas del motor + biblioteca
+go run ./cmd/pasrun x.pas     # ejecuta un .pas real en el motor
+go run ./cmd/bpgo test-compat # harness de conformidad legacy → compat/report.json
+```
+
+`compat/report.json` lo produce el harness legacy y reporta cobertura de símbolos
+por unidad, directivas y diagnósticos; trata la suite de pruebas del motor como
+la señal autoritativa.

@@ -1,9 +1,9 @@
-# BPGo Compiler Directives
+# Compiler directives
 
-BPGo recognises the standard Turbo Pascal 7 / Borland Pascal 7
+go-turbo-pascal recognises the standard Turbo Pascal 7 / Borland Pascal 7
 compiler directives. The full list is defined in
 `compat/spec/directives.json`; this document summarises the
-semantics implemented in the vm backend.
+semantics on the bytecode VM backend.
 
 ## Switch directives
 
@@ -57,13 +57,16 @@ semantics implemented in the vm backend.
 | `{$ELSE}`            | Else branch of conditional  |
 | `{$ENDIF}`           | End conditional block       |
 
-## Notes on BPGo implementation
+## Implementation notes
 
-- The lexer silently discards `{$...}` and `(*$...*)` directives
-  during tokenisation. The conformance harness verifies that the
-  directive names are recognised in `compat/spec/directives.json`.
-- The sem analyser and the vm backend do not yet honour these
-  switches; the directives are recorded in the source map for IDE
-  display but otherwise treated as a no-op.
-- `{$I file.inc}` and `{$L file.obj}` are not yet wired to the
-  include / OMF search paths.
+These directives are recognised for source compatibility, but most have no
+runtime effect on the bytecode backend — the VM is not a DOS/8086 target, so
+switches about segments, coprocessors, far calls and memory paragraphs are
+parsed and ignored:
+
+- The lexer accepts `{$...}` and `(*$...*)` directives during tokenisation and
+  records them in the source map (for IDE display). Switch directives such as
+  `{$R+}`/`{$I+}` are treated as no-ops on the VM backend.
+- `{$I file.inc}` (include) and `{$L file.obj}` (OMF linking) are **not** wired
+  to the VM backend; OMF/8086 is a legacy/experimental path (see the
+  [compatibility matrix](compatibility.md)).

@@ -1,6 +1,6 @@
-# IDE y depurador de BPGo
+# Herramientas de línea de comandos y depurador
 
-BPGo incluye tres herramientas orientadas al usuario:
+go-turbo-pascal incluye estas herramientas orientadas al usuario:
 
 - `bpgo`: el compilador / ejecutor de línea de comandos. Use `bpgo --help`.
 - `tpc`: un envoltorio compatible con TP7 alrededor de `bpgo` que selecciona

@@ -1,6 +1,6 @@
-# BPGo Units API
+# Units API
 
-BPGo ships a clean-room implementation of every standard TP7 / BP7
+go-turbo-pascal ships a clean-room implementation of every standard TP7 / BP7
 unit. The manifest in `compat/spec/units/<name>.json` lists every
 public symbol. This document provides a short overview of each
 unit and a pointer to the Go implementation.
@@ -40,7 +40,7 @@ Every public symbol is declared in the corresponding
 - `name`: the Pascal identifier
 - `kind`: `procedure`, `function`, `variable`, `type`, `constant`
 - `signature`: the Pascal signature
-- `status`: `implemented` (the BPGo package exports the symbol)
+- `status`: `implemented` (the engine package exports the symbol)
 - `tests`: a logical test bucket (e.g. `system_mem`, `crt_screen`)
 
 The Go test files under `internal/rtl/<name>/<name>_test.go` cover

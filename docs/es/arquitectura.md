@@ -1,36 +1,35 @@
 # Arquitectura
 
-BPGo / go-turbo-pascal lleva Turbo Pascal 7 a Go con dos objetivos:
+go-turbo-pascal lleva Turbo Pascal 7 a Go con dos objetivos:
 
-1. **Embeber Pascal en Go** mediante la librería `pkg/vmpas`.
-2. Dar herramientas modernas para `.pas` (plugins de editor; una IDE estilo TP7
-   queda como segunda fase).
+1. **Embeber Pascal en Go** a través de la biblioteca `pkg/vmpas`.
+2. Proporcionar herramientas modernas para `.pas` (LSP + DAP, plugins de editor).
 
 ## Pipeline de compilación
 
 ```
-Fuente Pascal (.pas)
+Pascal source (.pas)
    │
    ▼  internal/lexer      → tokens
    ▼  internal/parser     → AST (internal/ast)
-   ▼  internal/sem        → análisis semántico / tipos (en evolución)
-   ▼  internal/codegen    → bytecode IR  ← compilador real
-   ▼  internal/ir         → VM de bytecode que ejecuta el IR
+   ▼  internal/sem        → semantic analysis / types
+   ▼  internal/codegen    → bytecode IR  ← real compiler
+   ▼  internal/ir         → bytecode VM that executes the IR
 ```
 
 ### Front-end (lexer / parser / ast)
 
-Sólido y estable. Cubre la mayor parte de la sintaxis TP7: procedimientos y
+Sólido y estable. Cubre la mayor parte de la sintaxis de TP7: procedimientos y
 funciones (parámetros por valor, `var`, `const`), records (incluidas variantes),
 arrays, strings, conjuntos, enums, subrangos, punteros, todo el control de flujo
 (`if/case/for/while/repeat/with`), OOP (`object`, métodos, herencia) y units.
 
 ### internal/codegen — el compilador real
 
-Recorre el AST y emite bytecode IR. Soporta hoy:
+Recorre el AST y emite bytecode IR. Hoy soporta:
 
-- Procedimientos y funciones con su propio *frame*, parámetros por valor y por
-  `var` (referencia), recursión y variables locales.
+- Procedimientos y funciones con su propio *frame*, parámetros por valor y `var`
+  (referencia), recursión y variables locales.
 - Records (acceso a campos, semántica de copia por valor), arrays estáticos
   (incl. multidimensionales como arrays anidados), punteros (`New`/`Dispose`,
   `^`, `@`, comparación con `nil`), enums y conjuntos.
@@ -46,12 +45,12 @@ principal.
 
 ### internal/ir — la VM de bytecode
 
-VM de pila con:
+Una VM de pila con:
 
-- Modelo de **referencias por celda** (`*Value`): globales, slots de frame,
+- Un modelo de **referencias por celda** (`*Value`): globales, slots de frame,
   campos de record, elementos de array y celdas de heap son direccionables.
-  Esto da semántica correcta de `var` params, punteros y mutación anidada.
-- Convención de llamada con frames (parámetros primero, luego locales) y un
+  Esto da semántica correcta para `var` params, punteros y mutación anidada.
+- Una convención de llamada con frames (parámetros primero, luego locales) y un
   *slot* de resultado de función.
 - Valores con tipo en runtime: entero, real, booleano, char, string, conjunto,
   array, record, puntero, archivo y `nil`.
@@ -73,15 +72,18 @@ LSP/DAP) vive fuera de ese árbol de imports.
 ## RTL
 
 `internal/rtl/*` implementa las units estándar (System, Crt, Dos, Strings...) como
-funciones Go registradas como builtins de la VM. La integración como sistema de
-units reales (`uses`) está en el roadmap.
+funciones Go registradas como builtins de la VM, importables mediante un sistema real
+de units `uses` (interface/implementation/initialization).
 
-## Herramientas (roadmap)
+## Herramientas
 
-- **LSP + DAP**: un servidor de lenguaje (diagnósticos/hover/completion) sobre el
-  front-end, y un adaptador de depuración sobre la VM.
-- **Plugins Zed y VSCode**: clientes finos sobre LSP/DAP.
-- **TUI + IDE TP7** (diferida): núcleo TUI sobre tcell e IDE estilo Turbo Pascal.
+- **LSP + DAP**: un servidor de lenguaje (`cmd/pls`: diagnósticos/hover/completion/
+  ir-a-definición) sobre el front-end, y un adaptador de depuración (`cmd/pdap`:
+  breakpoints/step/variables) sobre la VM.
+- **Plugins Zed y VSCode**: clientes finos sobre LSP/DAP (ver [editores.md](editores.md)).
+- **TUI + IDE TP7** (no planeado actualmente): una IDE nostálgica al estilo Turbo Pascal
+  sobre tcell. Los stubs de `internal/tv` y `cmd/turbo` son legacy, no están en el
+  camino soportado.
 
 ## Estructura del proyecto (camino real vs. legacy)
 

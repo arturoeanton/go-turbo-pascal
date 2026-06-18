@@ -36,6 +36,27 @@ fmt.Print(eng.Output()) // "Hola, mundo!\n"
 You can pass a fragment (automatically wrapped in a program) or a
 complete program (`program ... end.`).
 
+## Compile once, run many
+
+`Run` compiles on every call. When you execute the same code repeatedly (a hot
+path, a rules engine evaluated per request), compile it once into a `Script` and
+reuse it:
+
+```go
+script, err := eng.Compile(code) // lex + parse + sem + codegen, once
+if err != nil {
+    log.Fatal(err) // all compile/type errors surface here, up front
+}
+for _, row := range rows {
+    eng.Var("row", &row)
+    script.Run()              // executes the cached program
+    fmt.Print(script.Output())
+}
+```
+
+This is the recommended pattern for performance; see the
+[benchmarks](status.md) (the loop drops to ~12 allocations/run).
+
 ## Binding Go variables
 
 Pass a **pointer** for read/write; a value for read-only.
@@ -137,6 +158,29 @@ registered, so calling them is a **compilation error** (not a runtime
 failure). `GetEnv`, `Exec`, the `Http*` and the `Db*` are
 **vmpas host extensions** (not part of the TP7 RTL) and only
 exist when their capability is granted.
+
+## Capability inference (`Analyze`)
+
+Before granting anything, you can statically discover which capabilities a script
+actually needs. `Analyze` compiles the code and scans the builtins it calls,
+returning a `CapReport`:
+
+```go
+rep, err := eng.Analyze(tenantScript)
+if err != nil {
+    log.Fatal(err) // the code does not even compile
+}
+if rep.Needs(vmpas.CapNetwork) {
+    // this script wants HTTP — decide whether to allow it
+}
+fmt.Println(rep.Required) // e.g. [filesystem network]
+fmt.Println(rep.Calls)    // the gated builtins it calls
+```
+
+Use it to reject scripts that exceed a policy, to show an operator what a script
+will touch before approving it, or to grant the minimal capability set. `Analyze`
+never executes the code. For an after-the-fact record of what actually ran, see
+the `Audit` capability below (`Engine.AuditLog`).
 
 ## Multi-tenant: running untrusted scripts
 
@@ -268,8 +312,13 @@ go run ./examples/embed
 
 ## Status and limitations
 
-vmpas uses the project's real compiler and VM. The procedural core is
-complete (procedures/functions with by-value and `var` parameters, recursion,
-records, arrays, pointers, enums, sets, control flow). In development:
-TP7's OOP object model, the units system and more of the RTL. See
-[`docs/architecture.md`](architecture.md) and the README roadmap.
+vmpas runs on the project's real compiler and VM. The procedural core and the
+TP7 OOP object model are complete (procedures/functions with by-value, `var` and
+`const` parameters, recursion, records, arrays, pointers, enums, sets, full
+control flow, `object` types with inheritance, virtual dispatch, constructors and
+`inherited`), as is the `uses` unit system and text/typed file I/O.
+
+Known limitation: `inherited` is supported as a statement (`inherited Init(a)`)
+but not yet inside an expression (`x := inherited Foo + y`). See the
+[compatibility matrix](compatibility.md) for the full per-feature detail and
+[architecture](architecture.md) for how the pieces fit together.

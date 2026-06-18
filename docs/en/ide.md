@@ -1,6 +1,6 @@
-# BPGo IDE and Debugger
+# Command-line tools and debugger
 
-BPGo ships three user-facing tools:
+go-turbo-pascal ships these user-facing commands:
 
 - `bpgo`: the command-line compiler / runner. Use `bpgo --help`.
 - `tpc`: a TP7-compatible wrapper around `bpgo` that selects map

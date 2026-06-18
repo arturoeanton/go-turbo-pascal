@@ -5,10 +5,12 @@
 ## Empezar
 - [Quickstart](quickstart.md)
 - [Inicio rápido](inicio.md)
+- [Preguntas frecuentes y resolución de problemas](faq.md)
 
 ## Embeber Pascal en Go (`pkg/vmpas`)
 - [vmpas — embeber Pascal](vmpas.md)
 - [API pública y estabilidad](api.md)
+- [Seguridad y el sandbox de capacidades](seguridad.md)
 - [Ejecución durable: determinismo + snapshot/resume](durable.md)
 - [Arquitectura](arquitectura.md)
 
@@ -23,7 +25,7 @@
 
 ## Tooling
 - [Editores (LSP/DAP, VSCode, Zed)](editores.md)
-- [IDE](ide.md)
+- [Herramientas de línea de comandos y depurador](ide.md)
 
 ## Proyecto
 - [Estado y viabilidad](estado.md)

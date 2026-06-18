@@ -1,6 +1,6 @@
-# BPGo Errors
+# Error messages
 
-The BPGo diagnostic catalog mirrors the Turbo Pascal 7 / Borland
+The go-turbo-pascal diagnostic catalog mirrors the Turbo Pascal 7 / Borland
 Pascal 7 error numbers. The full list is defined in
 `internal/diagnostics/diagnostics.go`; this document summarises
 the categories.

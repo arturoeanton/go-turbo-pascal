@@ -1,10 +1,9 @@
 # Architecture
 
-BPGo / go-turbo-pascal brings Turbo Pascal 7 to Go with two goals:
+go-turbo-pascal brings Turbo Pascal 7 to Go with two goals:
 
 1. **Embed Pascal in Go** through the `pkg/vmpas` library.
-2. Provide modern tooling for `.pas` (editor plugins; a TP7-style IDE
-   is deferred to a second phase).
+2. Provide modern tooling for `.pas` (LSP + DAP, editor plugins).
 
 ## Compilation pipeline
 
@@ -13,7 +12,7 @@ Pascal source (.pas)
    │
    ▼  internal/lexer      → tokens
    ▼  internal/parser     → AST (internal/ast)
-   ▼  internal/sem        → semantic analysis / types (evolving)
+   ▼  internal/sem        → semantic analysis / types
    ▼  internal/codegen    → bytecode IR  ← real compiler
    ▼  internal/ir         → bytecode VM that executes the IR
 ```
@@ -73,15 +72,18 @@ servers) lives outside that import tree.
 ## RTL
 
 `internal/rtl/*` implements the standard units (System, Crt, Dos, Strings...) as
-Go functions registered as VM builtins. Integration as a real unit system
-(`uses`) is on the roadmap.
+Go functions registered as VM builtins, importable through a real `uses` unit
+system (interface/implementation/initialization).
 
-## Tooling (roadmap)
+## Tooling
 
-- **LSP + DAP**: a language server (diagnostics/hover/completion) on top of the
-  front-end, and a debug adapter on top of the VM.
-- **Zed and VSCode plugins**: thin clients over LSP/DAP.
-- **TUI + TP7 IDE** (deferred): TUI core on tcell and a Turbo Pascal-style IDE.
+- **LSP + DAP**: a language server (`cmd/pls`: diagnostics/hover/completion/
+  go-to-definition) on top of the front-end, and a debug adapter (`cmd/pdap`:
+  breakpoints/step/variables) on top of the VM.
+- **Zed and VSCode plugins**: thin clients over LSP/DAP (see [editors.md](editors.md)).
+- **TUI + TP7 IDE** (not currently planned): a nostalgic Turbo Pascal-style IDE
+  on tcell. The `internal/tv` stubs and `cmd/turbo` are legacy, not on the
+  supported path.
 
 ## Project structure (real path vs. legacy)
 

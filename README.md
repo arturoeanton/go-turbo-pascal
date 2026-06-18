@@ -72,8 +72,9 @@ for _, input := range inputs {
 More: [Quickstart](docs/en/quickstart.md) ·
 [vmpas guide](docs/en/vmpas.md) ·
 [Durable execution](docs/en/durable.md) ·
-[Capability sandbox](docs/en/vmpas.md) ·
-[TP7 compatibility](docs/en/compatibility.md).
+[Security & sandbox](docs/en/security.md) ·
+[TP7 compatibility](docs/en/compatibility.md) ·
+[FAQ](docs/en/faq.md).
 
 ## Build and test
 

@@ -1,6 +1,6 @@
-# Errores de BPGo
+# Mensajes de error
 
-El catálogo de diagnósticos de BPGo refleja los números de error de
+El catálogo de diagnósticos de go-turbo-pascal refleja los números de error de
 Turbo Pascal 7 / Borland Pascal 7. La lista completa está definida en
 `internal/diagnostics/diagnostics.go`; este documento resume
 las categorías.

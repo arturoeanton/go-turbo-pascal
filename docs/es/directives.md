@@ -1,9 +1,9 @@
-# Directivas del compilador BPGo
+# Directivas del compilador
 
-BPGo reconoce las directivas de compilador estándar de Turbo Pascal 7 /
+go-turbo-pascal reconoce las directivas de compilador estándar de Turbo Pascal 7 /
 Borland Pascal 7. La lista completa está definida en
 `compat/spec/directives.json`; este documento resume la
-semántica implementada en el backend de la vm.
+semántica en el backend de la VM de bytecode.
 
 ## Directivas de conmutación
 
@@ -57,13 +57,16 @@ semántica implementada en el backend de la vm.
 | `{$ELSE}`            | Rama else del condicional   |
 | `{$ENDIF}`           | Fin del bloque condicional  |
 
-## Notas sobre la implementación de BPGo
+## Notas de implementación
 
-- El lexer descarta silenciosamente las directivas `{$...}` y `(*$...*)`
-  durante la tokenización. El arnés de conformidad verifica que los
-  nombres de las directivas sean reconocidos en `compat/spec/directives.json`.
-- El analizador sem y el backend de la vm todavía no respetan estas
-  conmutaciones; las directivas se registran en el mapa de fuente para
-  su visualización en el IDE, pero por lo demás se tratan como no-op.
-- `{$I file.inc}` y `{$L file.obj}` todavía no están conectados a las
-  rutas de búsqueda de include / OMF.
+Estas directivas se reconocen por compatibilidad de fuente, pero la mayoría no
+tiene efecto en tiempo de ejecución sobre el backend de bytecode — la VM no es un
+objetivo DOS/8086, así que las conmutaciones sobre segmentos, coprocesadores,
+llamadas far y párrafos de memoria se parsean y se ignoran:
+
+- El lexer acepta las directivas `{$...}` y `(*$...*)` durante la tokenización y
+  las registra en el mapa de fuente (para visualización en el IDE). Las
+  conmutaciones como `{$R+}`/`{$I+}` se tratan como no-op en el backend de la VM.
+- `{$I file.inc}` (include) y `{$L file.obj}` (enlace OMF) **no** están conectadas
+  al backend de la VM; OMF/8086 es un camino legacy/experimental (ver la
+  [matriz de compatibilidad](compatibility.md)).
