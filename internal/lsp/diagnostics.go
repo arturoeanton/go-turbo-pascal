@@ -1,7 +1,7 @@
-// Package lsp implements a minimal Language Server Protocol server for Turbo
-// Pascal 7 source, backed by the BPGo front-end. It currently provides
-// live diagnostics (lex, parse and codegen errors); hover, completion and
-// go-to-definition are planned.
+// Package lsp implements a Language Server Protocol server for Turbo Pascal 7
+// source, backed by the BPGo front-end. It provides live diagnostics (lex,
+// parse and codegen errors), document symbols, hover, go-to-definition and
+// completion (document symbols plus Pascal keywords).
 package lsp
 
 import (

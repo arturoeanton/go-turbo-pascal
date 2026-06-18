@@ -6,9 +6,16 @@ clientes finos.
 
 ## Servidor de lenguaje (`pls`)
 
-`cmd/pls` es un servidor LSP que habla JSON-RPC por stdio. Hoy ofrece
-**diagnósticos en vivo** (errores de lexer, parser y de tipo/semántica vía el
-compilador real). Hover, autocompletado e ir-a-definición están planificados.
+`cmd/pls` es un servidor LSP que habla JSON-RPC por stdio. Ofrece:
+
+- **Diagnósticos en vivo** (errores de lexer, parser y de tipo/semántica vía el
+  compilador real).
+- **Símbolos de documento** (`documentSymbol`): programa/unit, constantes,
+  tipos, variables y rutinas.
+- **Hover**: muestra la declaración/firma del símbolo bajo el cursor.
+- **Ir-a-definición** (`definition`): salta a la declaración del identificador.
+- **Autocompletado** (`completion`): símbolos del documento más palabras clave
+  de Pascal.
 
 Compilar:
 

@@ -84,7 +84,11 @@ func (s *Server) handle(req rpcRequest) bool {
 	case "initialize":
 		s.respond(req.ID, map[string]interface{}{
 			"capabilities": map[string]interface{}{
-				"textDocumentSync": 1, // full document sync
+				"textDocumentSync":       1, // full document sync
+				"hoverProvider":          true,
+				"definitionProvider":     true,
+				"documentSymbolProvider": true,
+				"completionProvider":     map[string]interface{}{"triggerCharacters": []string{"."}},
 			},
 			"serverInfo": map[string]interface{}{
 				"name":    "bpgo-pls",
@@ -115,8 +119,156 @@ func (s *Server) handle(req rpcRequest) bool {
 			s.delDoc(uri)
 			s.publishDiags(uri, nil)
 		}
+	case "textDocument/documentSymbol":
+		uri := parseDocPos(req.Params).uri
+		s.respond(req.ID, s.documentSymbols(uri))
+	case "textDocument/hover":
+		p := parseDocPos(req.Params)
+		s.respond(req.ID, s.hover(p.uri, p.line, p.character))
+	case "textDocument/definition":
+		p := parseDocPos(req.Params)
+		s.respond(req.ID, s.definition(p.uri, p.line, p.character))
+	case "textDocument/completion":
+		uri := parseDocPos(req.Params).uri
+		s.respond(req.ID, s.completion(uri))
 	}
 	return false
+}
+
+// docOf returns the current text of a document.
+func (s *Server) docOf(uri string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.docs[uri]
+}
+
+// documentSymbols answers textDocument/documentSymbol.
+func (s *Server) documentSymbols(uri string) []map[string]interface{} {
+	out := []map[string]interface{}{}
+	for _, sym := range Symbols(s.docOf(uri)) {
+		out = append(out, map[string]interface{}{
+			"name":           sym.Name,
+			"detail":         sym.Detail,
+			"kind":           sym.Kind,
+			"range":          symRange(sym),
+			"selectionRange": symRange(sym),
+		})
+	}
+	return out
+}
+
+// hover answers textDocument/hover with the declaration of the symbol under
+// the cursor.
+func (s *Server) hover(uri string, line, character int) interface{} {
+	src := s.docOf(uri)
+	word := wordAt(src, line, character)
+	if word == "" {
+		return nil
+	}
+	if sym, ok := findSymbol(src, word); ok {
+		return map[string]interface{}{
+			"contents": map[string]interface{}{
+				"kind":  "markdown",
+				"value": "```pascal\n" + sym.Detail + "\n```",
+			},
+		}
+	}
+	return nil
+}
+
+// definition answers textDocument/definition.
+func (s *Server) definition(uri string, line, character int) interface{} {
+	src := s.docOf(uri)
+	word := wordAt(src, line, character)
+	if word == "" {
+		return nil
+	}
+	if sym, ok := findSymbol(src, word); ok {
+		return map[string]interface{}{
+			"uri":   uri,
+			"range": symRange(sym),
+		}
+	}
+	return nil
+}
+
+// completion answers textDocument/completion with document symbols plus the
+// Pascal keywords.
+func (s *Server) completion(uri string) map[string]interface{} {
+	items := []map[string]interface{}{}
+	seen := map[string]bool{}
+	for _, sym := range Symbols(s.docOf(uri)) {
+		if seen[sym.Name] {
+			continue
+		}
+		seen[sym.Name] = true
+		items = append(items, map[string]interface{}{
+			"label":  sym.Name,
+			"kind":   completionKind(sym.Kind),
+			"detail": sym.Detail,
+		})
+	}
+	for _, kw := range pascalKeywords {
+		items = append(items, map[string]interface{}{"label": kw, "kind": symKeyword})
+	}
+	return map[string]interface{}{"isIncomplete": false, "items": items}
+}
+
+// findSymbol returns the declared symbol matching name (case-insensitive).
+func findSymbol(src, name string) (Symbol, bool) {
+	low := strings.ToLower(name)
+	for _, sym := range Symbols(src) {
+		if strings.ToLower(sym.Name) == low {
+			return sym, true
+		}
+	}
+	return Symbol{}, false
+}
+
+// symRange builds a one-token LSP range from a symbol's 1-based position.
+func symRange(sym Symbol) map[string]interface{} {
+	line := sym.Line - 1
+	if line < 0 {
+		line = 0
+	}
+	col := sym.Col - 1
+	if col < 0 {
+		col = 0
+	}
+	return map[string]interface{}{
+		"start": map[string]int{"line": line, "character": col},
+		"end":   map[string]int{"line": line, "character": col + len(sym.Name)},
+	}
+}
+
+// completionKind maps an LSP SymbolKind to a CompletionItemKind.
+func completionKind(symbolKind int) int {
+	switch symbolKind {
+	case symFunction:
+		return 3 // Function
+	case symVariable:
+		return 6 // Variable
+	case symConstant:
+		return 21 // Constant
+	case symClass:
+		return 7 // Class
+	case symEnum:
+		return 13 // Enum
+	case symModule:
+		return 9 // Module
+	}
+	return 1 // Text
+}
+
+// pascalKeywords are offered as completion items.
+var pascalKeywords = []string{
+	"begin", "end", "program", "unit", "uses", "interface", "implementation",
+	"procedure", "function", "const", "type", "var", "record", "array", "set",
+	"of", "string", "integer", "real", "boolean", "char", "if", "then", "else",
+	"case", "for", "to", "downto", "do", "while", "repeat", "until", "with",
+	"class", "object", "constructor", "destructor", "virtual", "property",
+	"read", "write", "try", "except", "finally", "raise", "nil", "true", "false",
+	"and", "or", "not", "div", "mod", "in",
 }
 
 func (s *Server) setDoc(uri, text string) {
@@ -235,6 +387,27 @@ func parseChange(raw json.RawMessage) (string, string) {
 	}
 	// Full sync: the last change carries the whole document.
 	return p.TextDocument.URI, p.ContentChanges[len(p.ContentChanges)-1].Text
+}
+
+// docPos is a document URI plus an optional 0-based cursor position.
+type docPos struct {
+	uri       string
+	line      int
+	character int
+}
+
+func parseDocPos(raw json.RawMessage) docPos {
+	var p struct {
+		TextDocument struct {
+			URI string `json:"uri"`
+		} `json:"textDocument"`
+		Position struct {
+			Line      int `json:"line"`
+			Character int `json:"character"`
+		} `json:"position"`
+	}
+	json.Unmarshal(raw, &p)
+	return docPos{uri: p.TextDocument.URI, line: p.Position.Line, character: p.Position.Character}
 }
 
 func parseClose(raw json.RawMessage) string {
