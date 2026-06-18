@@ -45,6 +45,7 @@ Documentación (en español):
 [Arquitectura](docs/arquitectura.md) ·
 [Editores (LSP/DAP, VSCode, Zed)](docs/editores.md) ·
 [Compatibilidad TP7](docs/compatibilidad.md) ·
+[match / tipos suma / Option](docs/match.md) ·
 [Estado y viabilidad](docs/estado.md) ·
 [Plan y auditoría](docs/plan.md) ·
 [Ejemplos](examples/README.md).
