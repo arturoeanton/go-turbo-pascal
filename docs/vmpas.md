@@ -136,13 +136,24 @@ existen cuando su capacidad está concedida.
 
 ## Integración: HTTP y SQL (consumir APIs y bases de datos)
 
-Bajo la capacidad `Network`, el código Pascal puede consumir APIs:
+Bajo la capacidad `Network`, el código Pascal puede consumir APIs con todos los
+verbos, headers (p. ej. tokens de autenticación) y parseo de JSON:
 
 ```pascal
-{ GET y POST devuelven el cuerpo de la respuesta }
+{ Verbos: GET, POST, PUT, PATCH, DELETE, y HttpRequest para cualquier método }
+HttpSetHeader('Authorization', 'Bearer ' + token);  { header en llamadas siguientes }
 body   := HttpGet('https://api.example.com/users');
 result := HttpPost('https://api.example.com/users', 'application/json', '{"n":1}');
+HttpPut('https://api.example.com/users/1', 'application/json', '{"n":2}');
+HttpDelete('https://api.example.com/users/1');
+HttpRequest('OPTIONS', 'https://api.example.com', '', '');
 status := HttpLastStatus();   { código de estado de la última llamada }
+
+{ Parsear la respuesta JSON (sin capacidad: es computación pura) }
+name := JsonStr(body, 'user.name');     { acceso por path con puntos }
+id   := JsonInt(body, 'items.0.id');    { segmento numérico = índice de array }
+len  := JsonLen(body, 'items');         { longitud de array/objeto }
+if JsonValid(body) then ...             { JsonValid / JsonBool / JsonStr / JsonInt / JsonLen }
 ```
 
 Bajo la capacidad `Database`, el código habla con cualquier base soportada por

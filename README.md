@@ -165,15 +165,20 @@ and `go test` green:
    adapter (`cmd/pdap`, breakpoints/step/variables).
 6. ✅ **Editor plugins** — VSCode (syntax + LSP + debugging); Zed (LSP).
 7. ✅ **Docs & examples (Spanish)** — `docs/`, `examples/`, `cmd/pasrun`.
-8. ⏳ **TP7 IDE (tcell)** — deferred to a later phase.
+8. ✅ **Host integration** — HTTP client (all verbs, headers), JSON
+   accessors, and SQL over Go's `database/sql` (host supplies the driver),
+   all capability-gated.
 
-## Known limitations / out of scope (this stage)
+The product focus is the embeddable engine and editor tooling. A nostalgic
+TP7 TUI/IDE is **not** on the roadmap.
+
+## Known limitations / out of scope
 
 - Inline assembler, overlays, far pointers, real MZ EXE generation and
-  DOS binary compatibility are **not** targeted at this stage.
-- `internal/tv` (the old non-functional Turbo Vision stubs) and the
+  DOS binary compatibility are **not** targeted.
+- `internal/tv` (non-functional Turbo Vision stubs) and the
   `codegen8086`/`mz`/`omf` back-end are legacy/experimental and are not on
-  the main path; the TUI is being rebuilt under `internal/tui` on tcell.
+  the main path; the nostalgic TUI/IDE is not planned.
 - `pkg/vmpas` is guaranteed dependency-free (a test enforces that tcell
   never enters its import closure), so embedding Pascal never pulls in the
   IDE.

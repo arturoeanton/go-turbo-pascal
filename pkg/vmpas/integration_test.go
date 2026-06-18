@@ -66,6 +66,101 @@ end.`); err != nil {
 	}
 }
 
+func TestHttpAllVerbsAndHeaders(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Echo the method and the Authorization header so the test can assert both.
+		fmt.Fprintf(w, "%s auth=%s", r.Method, r.Header.Get("Authorization"))
+	}))
+	defer srv.Close()
+
+	e := NewWith(Capabilities{Network: true})
+	url := srv.URL
+	var put, del, patch, custom string
+	e.Var("url", &url)
+	e.Var("put", &put)
+	e.Var("del", &del)
+	e.Var("patch", &patch)
+	e.Var("custom", &custom)
+	if err := e.Run(`
+begin
+  HttpSetHeader('Authorization', 'Bearer tok');
+  put    := HttpPut(url, 'application/json', '{}');
+  del    := HttpDelete(url);
+  patch  := HttpPatch(url, 'application/json', '{}');
+  custom := HttpRequest('OPTIONS', url, '', '');
+end.`); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if put != "PUT auth=Bearer tok" {
+		t.Fatalf("PUT = %q", put)
+	}
+	if del != "DELETE auth=Bearer tok" {
+		t.Fatalf("DELETE = %q", del)
+	}
+	if patch != "PATCH auth=Bearer tok" {
+		t.Fatalf("PATCH = %q", patch)
+	}
+	if custom != "OPTIONS auth=Bearer tok" {
+		t.Fatalf("HttpRequest OPTIONS = %q", custom)
+	}
+}
+
+func TestJsonAccessors(t *testing.T) {
+	e := New() // JSON needs no capability
+	var name string
+	var count int
+	var ok bool
+	var n int
+	e.Var("name", &name)
+	e.Var("count", &count)
+	e.Var("ok", &ok)
+	e.Var("n", &n)
+	if err := e.Run(`
+begin
+  name  := JsonStr('{"user":{"name":"alice"},"items":[10,20,30],"active":true,"count":7}', 'user.name');
+  count := JsonInt('{"count":7}', 'count');
+  ok    := JsonBool('{"active":true}', 'active');
+  n     := JsonLen('{"items":[10,20,30]}', 'items');
+end.`); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if name != "alice" {
+		t.Fatalf("JsonStr = %q", name)
+	}
+	if count != 7 {
+		t.Fatalf("JsonInt = %d", count)
+	}
+	if !ok {
+		t.Fatalf("JsonBool = %v", ok)
+	}
+	if n != 3 {
+		t.Fatalf("JsonLen = %d", n)
+	}
+}
+
+func TestJsonArrayIndexAndValid(t *testing.T) {
+	e := New()
+	var id int
+	var valid, bad bool
+	e.Var("id", &id)
+	e.Var("valid", &valid)
+	e.Var("bad", &bad)
+	if err := e.Run(`
+begin
+  id    := JsonInt('{"items":[{"id":1},{"id":42}]}', 'items.1.id');
+  valid := JsonValid('{"a":1}');
+  bad   := JsonValid('{not json');
+end.`); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if id != 42 {
+		t.Fatalf("nested array id = %d, want 42", id)
+	}
+	if !valid || bad {
+		t.Fatalf("JsonValid: valid=%v bad=%v", valid, bad)
+	}
+}
+
 func TestHttpBlockedByDefault(t *testing.T) {
 	if err := New().Run(`program T; var s: string; begin s := HttpGet('http://x'); end.`); err == nil {
 		t.Fatal("expected HTTP to be blocked under the default sandbox")

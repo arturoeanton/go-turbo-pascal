@@ -65,38 +65,84 @@ func (e *Engine) registerHostCaps(vm *ir.VM) {
 
 // registerHTTP installs the HTTP client builtins (Network capability):
 //
-//	HttpGet(url): string                       -> response body
-//	HttpPost(url, contentType, body): string   -> response body
-//	HttpLastStatus: Integer                    -> status code of the last call
+//	HttpGet(url): string                          -> response body
+//	HttpPost(url, contentType, body): string      -> response body
+//	HttpPut(url, contentType, body): string       -> response body
+//	HttpPatch(url, contentType, body): string     -> response body
+//	HttpDelete(url): string                       -> response body
+//	HttpRequest(method, url, contentType, body)   -> response body (any verb)
+//	HttpSetHeader(name, value)                    -> header for later requests
+//	HttpClearHeaders                              -> drop all set headers
+//	HttpLastStatus: Integer                       -> status code of the last call
 //
-// The body is returned as-is (empty on transport error); the status code of the
-// most recent call is available via HttpLastStatus (mirrors TP7's IOResult).
+// The body is returned as-is (empty on transport error); the status of the most
+// recent call is available via HttpLastStatus (mirrors TP7's IOResult). Headers
+// set via HttpSetHeader (e.g. Authorization) apply to every later request.
 func (e *Engine) registerHTTP(vm *ir.VM) {
-	do := func(resp *http.Response, err error) ir.Value {
+	send := func(method, url, ctype, body string) ir.Value {
+		var rdr io.Reader
+		if body != "" {
+			rdr = strings.NewReader(body)
+		}
+		req, err := http.NewRequest(method, url, rdr)
+		if err != nil {
+			e.httpStatus = 0
+			return ir.Value{Kind: ir.VKStr}
+		}
+		if ctype != "" {
+			req.Header.Set("Content-Type", ctype)
+		}
+		for k, v := range e.httpHeaders {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
 			e.httpStatus = 0
 			return ir.Value{Kind: ir.VKStr}
 		}
 		defer resp.Body.Close()
 		e.httpStatus = resp.StatusCode
-		body, err := io.ReadAll(resp.Body)
+		b, err := io.ReadAll(resp.Body)
 		if err != nil {
 			return ir.Value{Kind: ir.VKStr}
 		}
-		return ir.Value{Kind: ir.VKStr, Str: string(body)}
+		return ir.Value{Kind: ir.VKStr, Str: string(b)}
 	}
-	vm.Builtins["HttpGet"] = func(_ *ir.VM, args []ir.Value) ir.Value {
-		if len(args) == 0 {
-			return ir.Value{Kind: ir.VKStr}
+	arg := func(args []ir.Value, i int) string {
+		if i < len(args) {
+			return irToStr(args[i])
 		}
-		return do(http.Get(irToStr(args[0])))
+		return ""
 	}
-	vm.Builtins["HttpPost"] = func(_ *ir.VM, args []ir.Value) ir.Value {
-		if len(args) < 3 {
-			return ir.Value{Kind: ir.VKStr}
+	withBody := func(method string) ir.Builtin {
+		return func(_ *ir.VM, a []ir.Value) ir.Value {
+			return send(method, arg(a, 0), arg(a, 1), arg(a, 2))
 		}
-		url, ctype, body := irToStr(args[0]), irToStr(args[1]), irToStr(args[2])
-		return do(http.Post(url, ctype, strings.NewReader(body)))
+	}
+	vm.Builtins["HttpGet"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		return send(http.MethodGet, arg(a, 0), "", "")
+	}
+	vm.Builtins["HttpDelete"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		return send(http.MethodDelete, arg(a, 0), arg(a, 1), arg(a, 2))
+	}
+	vm.Builtins["HttpPost"] = withBody(http.MethodPost)
+	vm.Builtins["HttpPut"] = withBody(http.MethodPut)
+	vm.Builtins["HttpPatch"] = withBody(http.MethodPatch)
+	vm.Builtins["HttpRequest"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		return send(strings.ToUpper(arg(a, 0)), arg(a, 1), arg(a, 2), arg(a, 3))
+	}
+	vm.Builtins["HttpSetHeader"] = func(_ *ir.VM, a []ir.Value) ir.Value {
+		if len(a) >= 2 {
+			if e.httpHeaders == nil {
+				e.httpHeaders = map[string]string{}
+			}
+			e.httpHeaders[arg(a, 0)] = arg(a, 1)
+		}
+		return ir.Value{Kind: ir.VKNil}
+	}
+	vm.Builtins["HttpClearHeaders"] = func(_ *ir.VM, _ []ir.Value) ir.Value {
+		e.httpHeaders = nil
+		return ir.Value{Kind: ir.VKNil}
 	}
 	vm.Builtins["HttpLastStatus"] = func(_ *ir.VM, _ []ir.Value) ir.Value {
 		return ir.Value{Kind: ir.VKInt, Int: int64(e.httpStatus)}

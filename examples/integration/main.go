@@ -21,7 +21,7 @@ import (
 func main() {
 	// --- Servidor HTTP local (simula una API) ---
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, `{"status":"ok"}`)
+		fmt.Fprint(w, `{"status":"ok","user":{"name":"alice"},"items":[10,20,30]}`)
 	}))
 	defer srv.Close()
 
@@ -35,16 +35,22 @@ func main() {
 	eng.UseDB(db)
 
 	url := srv.URL
+	var body string
 	if err := eng.Var("url", &url); err != nil {
+		panic(err)
+	}
+	if err := eng.Var("body", &body); err != nil {
 		panic(err)
 	}
 
 	script := `
 begin
-  { Consumir la API }
+  { Consumir la API y parsear el JSON de la respuesta }
   WriteLn('GET ', url);
-  WriteLn('respuesta: ', HttpGet(url));
+  body := HttpGet(url);
   WriteLn('status: ', HttpLastStatus());
+  WriteLn('user.name: ', JsonStr(body, 'user.name'));
+  WriteLn('items: ', JsonLen(body, 'items'), ' (primero=', JsonInt(body, 'items.0'), ')');
 
   { Recorrer una consulta SQL }
   WriteLn('usuarios:');

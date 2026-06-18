@@ -76,10 +76,11 @@ type Engine struct {
 	// when bindings or capabilities change.
 	builtins map[string]ir.Builtin
 	// Host integration state (single-threaded per run; guarded by mu).
-	db         SQLDB     // database handle injected via UseDB (Database cap)
-	cursor     *dbCursor // active query cursor (Db* dataset-style API)
-	dbErr      string    // last DB error message (DbError)
-	httpStatus int       // status code of the last HTTP call (HttpLastStatus)
+	db          SQLDB             // database handle injected via UseDB (Database cap)
+	cursor      *dbCursor         // active query cursor (Db* dataset-style API)
+	dbErr       string            // last DB error message (DbError)
+	httpStatus  int               // status code of the last HTTP call (HttpLastStatus)
+	httpHeaders map[string]string // headers applied to subsequent HTTP requests
 }
 
 // UseDB binds a database handle for the Db* host builtins. The handle is the
@@ -392,6 +393,7 @@ func (e *Engine) registerRuntime(vm *ir.VM) {
 		}
 	}
 	e.registerHostCaps(vm)
+	registerJSON(vm) // JSON is pure computation; no capability required
 	// Output capture (matches codegen's default Write formatting).
 	vm.Builtins["write"] = func(vm *ir.VM, args []ir.Value) ir.Value {
 		for _, a := range args {
