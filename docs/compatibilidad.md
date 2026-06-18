@@ -31,7 +31,8 @@ Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
 | `inherited` | 🚧 | forma sentencia (`inherited Init(...)`); en expresión: ❌ |
 | `Self` | ✅ | |
 | `class` (estilo Delphi) | ✅ | tipo por referencia: `Create` (asigna), métodos, herencia, métodos virtuales (despacho dinámico), `Free`, nil por defecto |
-| Propiedades (`property X read F write F`) | ✅ | mapeo a campo de respaldo (getters/setters como métodos: pendiente) |
+| Propiedades (`property X read F write F`) | ✅ | campo de respaldo y métodos getter/setter (`read GetX write SetX`), incl. especificadores mixtos |
+| Tipos procedurales y closures | ✅ | `type T = procedure/function(...)`, valor de rutina con `@R`, métodos anónimos `procedure/function(...) begin..end` con captura por referencia; llamar un valor en expresión requiere `()` |
 | Interfaces | ❌ | (pendiente) |
 | Units (`uses`) | ✅ | interface / implementation / initialization de units de usuario |
 | `finalization` | 🚧 | se parsea, no se ejecuta |

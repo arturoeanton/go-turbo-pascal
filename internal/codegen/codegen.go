@@ -100,6 +100,7 @@ type gen struct {
 	dir       string                       // directory of the main source (unit lookup)
 	loaded    map[string]bool              // units already loaded
 	initFuncs []string                     // unit initialization functions to run first
+	anonSeq   int                          // counter for anonymous-method function names
 	errs      []string
 }
 
@@ -782,6 +783,19 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 		return
 	}
 
+	// Call through a procedural-type variable / closure value.
+	if vi := g.lookup(id.Name); vi != nil && vi.ti != nil && vi.ti.kind == ktFunc {
+		g.loadVar(id.Name)
+		for _, a := range c.Args {
+			g.compileExpr(a)
+		}
+		g.fn.Emit(ir.Instr{Op: ir.OPCallValue, A: int64(len(c.Args))})
+		if asStmt {
+			g.fn.Emit(ir.Instr{Op: ir.OPPop})
+		}
+		return
+	}
+
 	switch name {
 	case "assign", "reset", "rewrite", "append", "close", "erase", "rename":
 		// File operations take the file variable by reference.
@@ -1069,7 +1083,16 @@ func (g *gen) compileExpr(e ast.Expr) {
 		// p^ : load the pointer, then dereference it.
 		g.compileExpr(v.Expr)
 		g.fn.Emit(ir.Instr{Op: ir.OPLoadRef})
+	case *ast.AnonFunc:
+		g.compileAnonFunc(v)
 	case *ast.AtExpr:
+		// @Routine yields a callable value (a closure with no captures).
+		if id, ok := v.Expr.(*ast.Ident); ok && g.lookup(id.Name) == nil {
+			if fe, isFn := g.funcs[strings.ToLower(id.Name)]; isFn {
+				g.fn.Emit(ir.Instr{Op: ir.OPMakeClosure, S: fe.irName, A: 0})
+				break
+			}
+		}
 		g.compileAddr(v.Expr)
 	case *ast.SetExpr:
 		g.compileSet(v)

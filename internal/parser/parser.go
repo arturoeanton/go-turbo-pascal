@@ -838,6 +838,34 @@ func (p *Parser) parseProcType() ast.TypeExpr {
 	return pt
 }
 
+// parseAnonFunc parses an anonymous method expression:
+// `procedure(params) begin ... end` or `function(params): T begin ... end`.
+func (p *Parser) parseAnonFunc() ast.Expr {
+	start := p.curPos()
+	isFunc := p.is("function")
+	p.advance() // procedure | function
+	af := &ast.AnonFunc{Base: ast.Base{P: start}, IsFunc: isFunc}
+	if p.match(lexer.TokLParen) {
+		for {
+			if p.check(lexer.TokRParen) {
+				break
+			}
+			af.Params = append(af.Params, p.parseParam())
+			if !p.match(lexer.TokSemicolon) {
+				break
+			}
+		}
+		p.expect(lexer.TokRParen)
+	}
+	if isFunc && p.match(lexer.TokColon) {
+		if tr, ok := p.parseType().(*ast.TypeRef); ok {
+			af.Result = tr
+		}
+	}
+	af.Body = p.parseBlockBody()
+	return af
+}
+
 func (p *Parser) parseProcDecl(allowForward bool) ast.Decl {
 	start := p.curPos()
 	isMethod := false
@@ -1562,6 +1590,10 @@ func (p *Parser) parsePrimary() ast.Expr {
 		if t.Lower == "nil" {
 			p.advance()
 			return &ast.Ident{Base: ast.Base{P: ast.Pos{File: p.file, Line: t.Line, Col: t.Col}}, Name: "nil", Lower: "nil"}
+		}
+		// Anonymous method: `procedure(...) begin ... end` / `function(...): T begin ... end`.
+		if t.Lower == "procedure" || t.Lower == "function" {
+			return p.parseAnonFunc()
 		}
 		p.errf("unexpected keyword in expression: %s", t.Lower)
 		return &ast.IntLit{Base: ast.Base{P: ast.Pos{File: p.file, Line: t.Line, Col: t.Col}}, Value: 0}

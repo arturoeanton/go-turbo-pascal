@@ -49,6 +49,10 @@ const (
 	VKPtr
 	VKFile
 	VKNil
+	// VKFunc is a callable value (procedural type / closure): Str holds the
+	// IR function name and Array holds the captured reference cells (each a
+	// VKPtr), bound to the function's leading var-parameters on call.
+	VKFunc
 )
 
 func (v Value) String() string {
@@ -119,6 +123,11 @@ func (v Value) String() string {
 		return "File(" + v.File.Name + ")"
 	case VKNil:
 		return "nil"
+	case VKFunc:
+		if v.Str == "" {
+			return "nil"
+		}
+		return "func(" + v.Str + ")"
 	}
 	return "?"
 }
@@ -655,6 +664,55 @@ func (vm *VM) Step(frame *Frame) bool {
 			newFrame.Locals[i] = deepCopy(vm.Stack[base+i])
 		}
 		vm.Stack = vm.Stack[:base]
+		vm.CallStack = append(vm.CallStack, newFrame)
+		return true
+	case OPMakeClosure:
+		// Build a callable value: pop A capture references (already VKPtr),
+		// keep them in order, attach the target function name.
+		ncap := int(ins.A)
+		base := len(vm.Stack) - ncap
+		if base < 0 {
+			base = 0
+		}
+		var caps []Value
+		if ncap > 0 {
+			caps = make([]Value, ncap)
+			copy(caps, vm.Stack[base:])
+		}
+		vm.Stack = vm.Stack[:base]
+		vm.Stack = append(vm.Stack, Value{Kind: VKFunc, Str: ins.S, Array: caps})
+		return true
+	case OPCallValue:
+		// Stack: [.. closure, arg0..argN-1]. Bind captures to the leading
+		// var-parameter slots, then the actual arguments.
+		argc := int(ins.A)
+		base := len(vm.Stack) - argc
+		if base < 1 {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
+		clo := vm.Stack[base-1]
+		if clo.Kind != VKFunc {
+			vm.RuntimeError = 204 // calling a nil/invalid procedural value
+			vm.Halted = true
+			return false
+		}
+		fn, ok := findFunc(vm.Program, clo.Str)
+		if !ok {
+			vm.RuntimeError = 3
+			vm.Halted = true
+			return false
+		}
+		newFrame := vm.getFrame(fn, frame)
+		ncap := len(clo.Array)
+		for i := 0; i < ncap && i < len(newFrame.Locals); i++ {
+			newFrame.Locals[i] = clo.Array[i] // captured reference (VKPtr)
+		}
+		for i := 0; i < argc && ncap+i < len(newFrame.Locals); i++ {
+			newFrame.Locals[ncap+i] = deepCopy(vm.Stack[base+i])
+		}
+		vm.Stack = vm.Stack[:base-1]
 		vm.CallStack = append(vm.CallStack, newFrame)
 		return true
 	case OPDup:

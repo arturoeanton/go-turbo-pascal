@@ -89,6 +89,9 @@ const (
 	OPPopTry   // pop the top exception handler (try body completed normally)
 	OPRaise    // raise an exception (A=1: value on stack; A=0: re-raise)
 	OPReraise  // continue propagating the current exception (after a finally)
+	// Procedural values / closures.
+	OPMakeClosure // pop A capture refs, push a VKFunc value (S=IR function name)
+	OPCallValue   // pop A args then a VKFunc; call it, binding captures + args
 )
 
 func (o Op) String() string {

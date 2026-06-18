@@ -142,6 +142,7 @@ const (
 	EKRange
 	EKIn
 	EKWriteArg
+	EKAnonFunc
 )
 
 type IntLit struct {
@@ -338,6 +339,26 @@ func (c CaretExpr) String() string   { return c.Expr.String() + "^" }
 type AtExpr struct {
 	Base
 	Expr Expr
+}
+
+// AnonFunc is an anonymous method expression:
+// `procedure(params) begin ... end` or `function(params): T begin ... end`.
+// It may capture variables from the enclosing scope (by reference).
+type AnonFunc struct {
+	Base
+	IsFunc bool
+	Params []Param
+	Result *TypeRef
+	Body   *BlockBody
+}
+
+func (AnonFunc) exprNode()          {}
+func (AnonFunc) exprKind() ExprKind { return EKAnonFunc }
+func (a AnonFunc) String() string {
+	if a.IsFunc {
+		return "function(...)"
+	}
+	return "procedure(...)"
 }
 
 func (AtExpr) exprNode()          {}

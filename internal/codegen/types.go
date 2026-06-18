@@ -20,6 +20,7 @@ const (
 	ktSet
 	ktObject
 	ktFile
+	ktFunc // procedural type / closure (procedure or function value)
 )
 
 // objMethod describes a method declared on an object type.
@@ -54,6 +55,8 @@ type typeInfo struct {
 	methods []objMethod         // own + inherited method names
 	isClass bool                // `class` (reference type) vs `object` (value type)
 	props   map[string]propInfo // property name (lower) -> backing fields
+	// ktFunc:
+	isFunc bool // procedural type returns a value (function vs procedure)
 }
 
 // propInfo maps a property to its read/write backing fields.
@@ -162,6 +165,8 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 			ti.elem = g.resolveType(v.Target)
 		}
 		return ti
+	case *ast.ProcType:
+		return &typeInfo{kind: ktFunc, isFunc: v.IsFunc}
 	case *ast.RecordType:
 		ti := &typeInfo{kind: ktRecord}
 		for _, f := range v.Fields {
@@ -362,6 +367,8 @@ func (g *gen) zeroTemplate(ti *typeInfo) ir.Value {
 			arr[i] = g.zeroTemplate(ti.elem)
 		}
 		return ir.Value{Kind: ir.VKArray, Array: arr}
+	case ktFunc:
+		return ir.Value{Kind: ir.VKFunc} // unassigned procedural value (nil)
 	}
 	return ir.Value{Kind: ir.VKInt}
 }
