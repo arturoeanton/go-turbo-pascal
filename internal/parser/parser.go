@@ -1359,6 +1359,12 @@ func (p *Parser) parseStmt() ast.Stmt {
 	if p.isContextualKw("match") {
 		return p.parseMatch(false)
 	}
+	// {$MODE BPGO}: `defer Stmt` schedules Stmt to run at routine exit.
+	if p.isContextualKw("defer") {
+		dstart := p.curPos()
+		p.advance()
+		return &ast.DeferStmt{Base: ast.Base{P: dstart}, Stmt: p.parseStmt()}
+	}
 	switch t.Kind {
 	case lexer.TokKeyword:
 		switch t.Lower {

@@ -720,6 +720,16 @@ type ForStmt struct {
 	Body Stmt
 }
 
+// DeferStmt is `defer Stmt` ({$MODE BPGO}): Stmt runs when the enclosing routine
+// exits (normally or via a panic), in reverse order of the defers reached.
+type DeferStmt struct {
+	Base
+	Stmt Stmt
+}
+
+func (DeferStmt) stmtNode()      {}
+func (DeferStmt) String() string { return "defer" }
+
 // TryStmt is `try Body except Except end` or `try Body finally Finally end`.
 // Exactly one of Except/Finally is non-nil.
 // MatchStmt is `match Expr of Pattern [when Guard] => Body; ... [else Body;] end`

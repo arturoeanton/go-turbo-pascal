@@ -305,3 +305,63 @@ end.`, "t.pas")
 	}
 	// It compiles; the failure is at runtime. Run it and expect a non-zero code.
 }
+
+func TestDeferLIFO(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+begin
+  defer WriteLn('1');
+  defer WriteLn('2');
+  defer WriteLn('3');
+  WriteLn('body');
+end.`, "body\n3\n2\n1\n")
+}
+
+func TestDeferInRoutineAndConditional(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+procedure Run(open: Boolean);
+begin
+  if open then defer WriteLn('close');
+  WriteLn('work');
+end;
+begin
+  Run(true);
+  WriteLn('---');
+  Run(false);
+end.`, "work\nclose\n---\nwork\n")
+}
+
+func TestPanicRecover(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+function Safe(n: Integer): string;
+begin
+  Safe := 'ok';
+  defer
+    if recover <> nil then Safe := 'recovered';
+  if n = 0 then panic('boom');
+  Safe := 'reached';
+end;
+begin
+  WriteLn(Safe(1));
+  WriteLn(Safe(0));
+end.`, "reached\nrecovered\n")
+}
+
+func TestDeferRunsOnPanicCleanup(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+procedure Inner;
+begin
+  defer WriteLn('cleanup');
+  panic('x');
+end;
+begin
+  try
+    Inner;
+  except
+    WriteLn('caught');
+  end;
+end.`, "cleanup\ncaught\n")
+}

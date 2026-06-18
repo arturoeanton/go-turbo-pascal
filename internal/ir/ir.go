@@ -95,6 +95,7 @@ const (
 	OPAddrResult  // push a reference to the current frame's result cell
 	// Algebraic data types / pattern matching.
 	OPMkTagged // pop A payloads, push a tagged record {__tag:S, __0..__(A-1)}
+	OPRecover  // push the active panic value and clear it (or nil if none)
 )
 
 func (o Op) String() string {

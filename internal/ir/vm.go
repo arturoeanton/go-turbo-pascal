@@ -522,9 +522,23 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.doUnwind()
 		return !vm.Halted
 	case OPReraise:
-		vm.excActive = true
+		// Continue propagating the current exception, unless it was recovered
+		// (OPRecover cleared excActive) while running a finally / deferred body.
+		if !vm.excActive {
+			return true
+		}
 		vm.doUnwind()
 		return !vm.Halted
+	case OPRecover:
+		// recover(): if a panic is propagating, capture its value and stop the
+		// propagation; otherwise yield nil.
+		if vm.excActive {
+			vm.excActive = false
+			vm.Stack = append(vm.Stack, vm.excValue)
+		} else {
+			vm.Stack = append(vm.Stack, Value{Kind: VKNil})
+		}
+		return true
 	case OPSetLength:
 		tmpl := vm.pop()
 		n := int(toInt(vm.pop()))

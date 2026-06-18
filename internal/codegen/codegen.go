@@ -85,30 +85,31 @@ type withCtx struct {
 }
 
 type gen struct {
-	mod       *ir.Module
-	fn        *ir.Function
-	scope     []map[string]*vinfo
-	funcs     map[string]*fnEntry
-	types     map[string]*typeInfo
-	externals map[string]bool
-	presets   map[string]bool
-	autoLoop  bool
-	loops     []*loopCtx
-	curObject *typeInfo                    // object type when compiling a method
-	withs     []withCtx                    // active `with` records (innermost last)
-	labels    map[int]int                  // label number -> code index (per function)
-	gotoFix   []gotoRef                    // pending goto jumps to patch (per function)
-	vtables   map[string]map[string]string // type -> method -> ir func name
-	operators map[string]string            // "op|leftType|rightType" -> ir func name
-	helpers   map[string]map[string]string // extended type -> method -> ir func name
-	dir       string                       // directory of the main source (unit lookup)
-	loaded    map[string]bool              // units already loaded
-	initFuncs []string                     // unit initialization functions to run first
-	anonSeq   int                          // counter for anonymous-method function names
-	modern    bool                         // {$MODE BPGO} extensions enabled
-	adtCtors  map[string]int               // ADT constructor name -> arity (sum types, Some/None)
-	tmpSeq    int                          // counter for synthesized match bindings
-	errs      []string
+	mod        *ir.Module
+	fn         *ir.Function
+	scope      []map[string]*vinfo
+	funcs      map[string]*fnEntry
+	types      map[string]*typeInfo
+	externals  map[string]bool
+	presets    map[string]bool
+	autoLoop   bool
+	loops      []*loopCtx
+	curObject  *typeInfo                    // object type when compiling a method
+	withs      []withCtx                    // active `with` records (innermost last)
+	labels     map[int]int                  // label number -> code index (per function)
+	gotoFix    []gotoRef                    // pending goto jumps to patch (per function)
+	vtables    map[string]map[string]string // type -> method -> ir func name
+	operators  map[string]string            // "op|leftType|rightType" -> ir func name
+	helpers    map[string]map[string]string // extended type -> method -> ir func name
+	dir        string                       // directory of the main source (unit lookup)
+	loaded     map[string]bool              // units already loaded
+	initFuncs  []string                     // unit initialization functions to run first
+	anonSeq    int                          // counter for anonymous-method function names
+	modern     bool                         // {$MODE BPGO} extensions enabled
+	adtCtors   map[string]int               // ADT constructor name -> arity (sum types, Some/None)
+	tmpSeq     int                          // counter for synthesized match bindings
+	deferFlags map[*ast.DeferStmt]string    // defer statement -> its "reached" flag binding
+	errs       []string
 }
 
 // gotoRef is an emitted goto awaiting resolution to its label's code index.
@@ -165,19 +166,20 @@ func CompileWithOptions(src, file string, opts Options) (*ir.Program, error) {
 		presets = map[string]bool{}
 	}
 	g := &gen{
-		mod:       &ir.Module{Name: "main", Funcs: map[string]*ir.Function{}, Init: []string{}},
-		funcs:     map[string]*fnEntry{},
-		types:     map[string]*typeInfo{},
-		externals: ext,
-		presets:   presets,
-		autoLoop:  opts.AutoDeclareLoopVars,
-		vtables:   map[string]map[string]string{},
-		operators: map[string]string{},
-		helpers:   map[string]map[string]string{},
-		adtCtors:  map[string]int{},
-		modern:    prog.Modern,
-		dir:       filepath.Dir(file),
-		loaded:    map[string]bool{},
+		mod:        &ir.Module{Name: "main", Funcs: map[string]*ir.Function{}, Init: []string{}},
+		funcs:      map[string]*fnEntry{},
+		types:      map[string]*typeInfo{},
+		externals:  ext,
+		presets:    presets,
+		autoLoop:   opts.AutoDeclareLoopVars,
+		vtables:    map[string]map[string]string{},
+		operators:  map[string]string{},
+		helpers:    map[string]map[string]string{},
+		adtCtors:   map[string]int{},
+		deferFlags: map[*ast.DeferStmt]string{},
+		modern:     prog.Modern,
+		dir:        filepath.Dir(file),
+		loaded:     map[string]bool{},
 	}
 	// Built-in Option constructors (modern mode), unless user-shadowed.
 	if g.modern {
@@ -269,9 +271,7 @@ func (g *gen) compileProgram(p *ast.Program) {
 		main.Emit(ir.Instr{Op: ir.OPPop})
 	}
 	if p.Body != nil {
-		for _, s := range p.Body.Stmts {
-			g.compileStmt(s)
-		}
+		g.compileBodyWithDefers(p.Body.Stmts)
 	}
 	// Integrated unit tests run after the program body, each isolated in a
 	// try/except so a failed assertion (which raises) is reported, not fatal.
@@ -493,9 +493,7 @@ func (g *gen) compileRoutine(pd *ast.ProcDecl, fnName string, selfType *typeInfo
 	}
 
 	if pd.Body != nil {
-		for _, s := range pd.Body.Stmts {
-			g.compileStmt(s)
-		}
+		g.compileBodyWithDefers(pd.Body.Stmts)
 	}
 	fn.Emit(ir.Instr{Op: ir.OPReturn})
 	g.patchGotos(fn)
@@ -558,6 +556,8 @@ func (g *gen) compileStmt(s ast.Stmt) {
 		g.compileTry(v)
 	case *ast.MatchStmt:
 		g.compileMatch(v)
+	case *ast.DeferStmt:
+		g.compileDefer(v)
 	case *ast.RaiseStmt:
 		if v.Expr != nil {
 			g.compileExpr(v.Expr)
@@ -883,6 +883,27 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 	if g.isAssertion(name) {
 		g.compileAssertion(name, c.Args)
 		return
+	}
+
+	// panic(v) raises v; recover() yields the active panic value (or nil). Both
+	// modern built-ins, overridable by a user routine of the same name.
+	if g.modern && g.funcs[name] == nil && g.lookup(id.Name) == nil {
+		switch name {
+		case "panic":
+			if len(c.Args) > 0 {
+				g.compileExpr(c.Args[0])
+			} else {
+				g.fn.Emit(ir.Instr{Op: ir.OPPushStr, S: "panic"})
+			}
+			g.fn.Emit(ir.Instr{Op: ir.OPRaise, A: 1})
+			return
+		case "recover":
+			g.fn.Emit(ir.Instr{Op: ir.OPRecover})
+			if asStmt {
+				g.fn.Emit(ir.Instr{Op: ir.OPPop})
+			}
+			return
+		}
 	}
 
 	// ADT constructor (sum-type variant / Some): build a tagged value.
@@ -1262,6 +1283,11 @@ func (g *gen) loadVar(name string) {
 		// parentheses (TP7 allows this). Order: Self method, user function,
 		// host/RTL builtin.
 		low := strings.ToLower(name)
+		// recover used as a bare expression (modern mode).
+		if g.modern && low == "recover" && g.funcs[low] == nil {
+			g.fn.Emit(ir.Instr{Op: ir.OPRecover})
+			return
+		}
 		// Nullary ADT constructor used as a value (e.g. None).
 		if arity, ok := g.adtCtors[low]; ok && arity == 0 && g.funcs[low] == nil {
 			g.fn.Emit(ir.Instr{Op: ir.OPMkTagged, S: low, A: 0})
