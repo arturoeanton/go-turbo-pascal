@@ -93,6 +93,8 @@ const (
 	OPMakeClosure // pop A capture refs, push a VKFunc value (S=IR function name)
 	OPCallValue   // pop A args then a VKFunc; call it, binding captures + args
 	OPAddrResult  // push a reference to the current frame's result cell
+	// Algebraic data types / pattern matching.
+	OPMkTagged // pop A payloads, push a tagged record {__tag:S, __0..__(A-1)}
 )
 
 func (o Op) String() string {

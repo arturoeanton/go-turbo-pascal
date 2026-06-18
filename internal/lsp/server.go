@@ -92,7 +92,7 @@ func (s *Server) handle(req rpcRequest) bool {
 			},
 			"serverInfo": map[string]interface{}{
 				"name":    "bpgo-pls",
-				"version": "0.1.8",
+				"version": "0.1.9",
 			},
 		})
 	case "initialized":

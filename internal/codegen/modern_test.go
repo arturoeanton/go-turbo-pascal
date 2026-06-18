@@ -161,3 +161,72 @@ end;
 begin
 end.`, "PASS: assertfalse\n")
 }
+
+func TestMatchOption(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+function Find(n: Integer): Integer;
+begin
+  if n > 0 then Find := Some(n * 10) else Find := None;
+end;
+var r: Integer;
+begin
+  match Find(5) of
+    Some(v) => WriteLn('got ', v);
+    None    => WriteLn('nothing');
+  end;
+  match Find(-1) of
+    Some(v) => WriteLn('got ', v);
+    None    => WriteLn('nothing');
+  end;
+end.`, "got 50\nnothing\n")
+}
+
+func TestMatchUserADT(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+type
+  TShape = (Circle(Integer), Rect(Integer, Integer));
+var s: TShape;
+begin
+  s := Rect(3, 4);
+  match s of
+    Circle(r)  => WriteLn('circle ', r);
+    Rect(w, h) => WriteLn('area ', w * h);
+  end;
+  s := Circle(7);
+  match s of
+    Circle(r)  => WriteLn('circle ', r);
+    Rect(w, h) => WriteLn('area ', w * h);
+  end;
+end.`, "area 12\ncircle 7\n")
+}
+
+func TestMatchLiteralAndElse(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var i: Integer;
+begin
+  for i := 1 to 4 do
+    match i of
+      1 => WriteLn('one');
+      2 => WriteLn('two');
+      else WriteLn('many');
+    end;
+end.`, "one\ntwo\nmany\nmany\n")
+}
+
+func TestMatchEnumConstant(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+type TColor = (Red, Green, Blue);
+var c: TColor;
+begin
+  c := Green;
+  match c of
+    Red   => WriteLn('r');
+    Green => WriteLn('g');
+    Blue  => WriteLn('b');
+  end;
+end.`, "g\n")
+}

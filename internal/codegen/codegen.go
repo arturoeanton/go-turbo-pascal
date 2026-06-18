@@ -55,6 +55,7 @@ type vinfo struct {
 	typ       vtype     // coarse type (scalar formatting / operator choice)
 	ti        *typeInfo // resolved type (records, arrays, pointers, enums)
 	immutable bool      // `let` binding: reassignment is a compile error
+	bindName  string    // display name for synthesized bindings (match)
 }
 
 type paramInfo struct {
@@ -104,6 +105,9 @@ type gen struct {
 	loaded    map[string]bool              // units already loaded
 	initFuncs []string                     // unit initialization functions to run first
 	anonSeq   int                          // counter for anonymous-method function names
+	modern    bool                         // {$MODE BPGO} extensions enabled
+	adtCtors  map[string]int               // ADT constructor name -> arity (sum types, Some/None)
+	tmpSeq    int                          // counter for synthesized match bindings
 	errs      []string
 }
 
@@ -170,8 +174,15 @@ func CompileWithOptions(src, file string, opts Options) (*ir.Program, error) {
 		vtables:   map[string]map[string]string{},
 		operators: map[string]string{},
 		helpers:   map[string]map[string]string{},
+		adtCtors:  map[string]int{},
+		modern:    prog.Modern,
 		dir:       filepath.Dir(file),
 		loaded:    map[string]bool{},
+	}
+	// Built-in Option constructors (modern mode), unless user-shadowed.
+	if g.modern {
+		g.adtCtors["some"] = 1
+		g.adtCtors["none"] = 0
 	}
 	g.compileProgram(prog)
 	if len(g.errs) > 0 {
@@ -545,6 +556,8 @@ func (g *gen) compileStmt(s ast.Stmt) {
 		g.compileWith(v)
 	case *ast.TryStmt:
 		g.compileTry(v)
+	case *ast.MatchStmt:
+		g.compileMatch(v)
 	case *ast.RaiseStmt:
 		if v.Expr != nil {
 			g.compileExpr(v.Expr)
@@ -869,6 +882,18 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 	// routine of the same name). They raise on failure; a `test` block catches.
 	if g.isAssertion(name) {
 		g.compileAssertion(name, c.Args)
+		return
+	}
+
+	// ADT constructor (sum-type variant / Some): build a tagged value.
+	if _, isCtor := g.adtCtors[name]; isCtor && g.funcs[name] == nil && g.lookup(id.Name) == nil {
+		for _, a := range c.Args {
+			g.compileExpr(a)
+		}
+		g.fn.Emit(ir.Instr{Op: ir.OPMkTagged, S: name, A: int64(len(c.Args))})
+		if asStmt {
+			g.fn.Emit(ir.Instr{Op: ir.OPPop})
+		}
 		return
 	}
 
@@ -1235,6 +1260,11 @@ func (g *gen) loadVar(name string) {
 		// parentheses (TP7 allows this). Order: Self method, user function,
 		// host/RTL builtin.
 		low := strings.ToLower(name)
+		// Nullary ADT constructor used as a value (e.g. None).
+		if arity, ok := g.adtCtors[low]; ok && arity == 0 && g.funcs[low] == nil {
+			g.fn.Emit(ir.Instr{Op: ir.OPMkTagged, S: low, A: 0})
+			return
+		}
 		if g.curObject != nil && g.curObject.hasMethod(low) {
 			g.compileSelfMethodCall(low, nil, false)
 			return

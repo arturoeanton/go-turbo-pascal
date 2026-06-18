@@ -179,7 +179,7 @@ func (p *Parser) parseProgram() ast.Node {
 	block := p.parseBlock(true)
 	body := p.parseBlockBody()
 	p.expect(lexer.TokPeriod)
-	return &ast.Program{Base: ast.Base{P: start}, Name: id.Text, Uses: uses, Block: block, Body: body}
+	return &ast.Program{Base: ast.Base{P: start}, Name: id.Text, Uses: uses, Block: block, Body: body, Modern: p.modeBPGo}
 }
 
 func (p *Parser) parseUnitDecl() ast.Node {
@@ -590,12 +590,27 @@ func (p *Parser) parseType() ast.TypeExpr {
 		}
 	}
 	if t.Kind == lexer.TokLParen {
-		// enumerated type or ( subrange )
+		// enumerated type, ( subrange ), or {$MODE BPGO} sum type with payloads.
 		p.advance()
 		names := []string{}
+		variants := []ast.SumVariant{}
+		hasPayload := false
 		for {
 			id := p.expect(lexer.TokIdent)
 			names = append(names, id.Text)
+			v := ast.SumVariant{Name: id.Text}
+			if p.isModern() && p.check(lexer.TokLParen) { // Variant(T1, T2, ...)
+				p.advance()
+				for !p.check(lexer.TokRParen) {
+					v.Fields = append(v.Fields, p.parseType())
+					if !p.match(lexer.TokComma) {
+						break
+					}
+				}
+				p.expect(lexer.TokRParen)
+				hasPayload = true
+			}
+			variants = append(variants, v)
 			if !p.match(lexer.TokComma) {
 				break
 			}
@@ -607,6 +622,9 @@ func (p *Parser) parseType() ast.TypeExpr {
 			return &ast.RangeType{Base: ast.Base{P: start}, Lo: lo, Hi: hi}
 		}
 		p.expect(lexer.TokRParen)
+		if hasPayload {
+			return &ast.SumType{Base: ast.Base{P: start}, Variants: variants}
+		}
 		return &ast.EnumType{Base: ast.Base{P: start}, Names: names}
 	}
 	if t.Kind == lexer.TokCaret {
@@ -1337,6 +1355,10 @@ func (p *Parser) parseStmt() ast.Stmt {
 	if t.Kind == lexer.TokSemicolon {
 		return nil
 	}
+	// {$MODE BPGO}: `match` is a contextual keyword (otherwise a plain ident).
+	if p.isContextualKw("match") {
+		return p.parseMatch()
+	}
 	switch t.Kind {
 	case lexer.TokKeyword:
 		switch t.Lower {
@@ -1589,6 +1611,56 @@ func (p *Parser) parseTry() ast.Stmt {
 	}
 	p.expect(lexer.TokKeyword, "end")
 	return t
+}
+
+// parseMatch parses `match Expr of Pattern => Stmt; ... [else Stmt;] end`.
+// Patterns: a constructor `Ctor` / `Ctor(b1, b2)`, a literal, or `_`.
+func (p *Parser) parseMatch() ast.Stmt {
+	start := p.curPos()
+	p.advance() // match
+	m := &ast.MatchStmt{Base: ast.Base{P: start}, Expr: p.parseExpr()}
+	p.expect(lexer.TokKeyword, "of")
+	for !p.is("end") && !p.is("else") && p.cur().Kind != lexer.TokEOF {
+		arm := ast.MatchArm{Base: ast.Base{P: p.curPos()}}
+		switch {
+		case p.cur().Kind == lexer.TokIdent && p.cur().Lower == "_":
+			arm.Wildcard = true
+			p.advance()
+		case p.cur().Kind == lexer.TokIdent:
+			arm.Ctor = p.cur().Text
+			p.advance()
+			if p.match(lexer.TokLParen) { // Ctor(bind1, bind2, ...)
+				for !p.check(lexer.TokRParen) {
+					arm.Binds = append(arm.Binds, p.expect(lexer.TokIdent).Text)
+					if !p.match(lexer.TokComma) {
+						break
+					}
+				}
+				p.expect(lexer.TokRParen)
+			}
+		default:
+			// Literal pattern (int/string/char). parsePrimary stops before the
+			// `=>` arrow (parseExpr would consume the `=` as a comparison).
+			arm.Lit = p.parsePrimary()
+		}
+		p.matchArrow()
+		arm.Body = p.parseStmt()
+		m.Arms = append(m.Arms, arm)
+		p.match(lexer.TokSemicolon)
+	}
+	if p.is("else") {
+		p.advance()
+		p.match(lexer.TokColon) // tolerate `else:`; `=>` not required after else
+		m.Else = p.parseStmtSeqUntil("end")
+	}
+	p.expect(lexer.TokKeyword, "end")
+	return m
+}
+
+// matchArrow consumes the `=>` arrow (lexed as `=` then `>`).
+func (p *Parser) matchArrow() {
+	p.expect(lexer.TokEqual)
+	p.expect(lexer.TokOp, ">")
 }
 
 func (p *Parser) parseWith() ast.Stmt {

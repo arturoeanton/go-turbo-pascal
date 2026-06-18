@@ -397,6 +397,24 @@ func (vm *VM) Step(frame *Frame) bool {
 	case OPSetResult:
 		frame.Result = vm.pop()
 		return true
+	case OPMkTagged:
+		// Build an ADT value: a record tagged with the constructor name plus
+		// positional payload fields __0..__(A-1).
+		n := int(ins.A)
+		base := len(vm.Stack) - n
+		if base < 0 {
+			base = 0
+		}
+		rec := make(map[string]*Value, n+1)
+		tag := Value{Kind: VKStr, Str: ins.S}
+		rec["__tag"] = &tag
+		for i := 0; i < n; i++ {
+			v := vm.Stack[base+i]
+			rec[fmt.Sprintf("__%d", i)] = &v
+		}
+		vm.Stack = vm.Stack[:base]
+		vm.Stack = append(vm.Stack, Value{Kind: VKRecord, Rec: rec})
+		return true
 	case OPAddrResult:
 		vm.Stack = append(vm.Stack, Value{Kind: VKPtr, Cell: &frame.Result})
 		return true

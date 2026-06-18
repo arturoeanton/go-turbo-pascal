@@ -30,10 +30,11 @@ func (b Base) WithFile(f string) Base { b.P.File = f; return b }
 
 type Program struct {
 	Base
-	Name  string
-	Uses  *UsesClause
-	Block *Block
-	Body  *BlockBody
+	Name   string
+	Uses   *UsesClause
+	Block  *Block
+	Body   *BlockBody
+	Modern bool // {$MODE BPGO} was in effect
 }
 
 func (p Program) String() string { return "program " + p.Name }
@@ -720,6 +721,29 @@ type ForStmt struct {
 
 // TryStmt is `try Body except Except end` or `try Body finally Finally end`.
 // Exactly one of Except/Finally is non-nil.
+// MatchStmt is `match Expr of Pattern => Stmt; ... [else Stmt;] end` ({$MODE BPGO}).
+type MatchStmt struct {
+	Base
+	Expr Expr
+	Arms []MatchArm
+	Else []Stmt
+}
+
+// MatchArm is one `Pattern => Body` of a match. Exactly one pattern kind applies:
+// a constructor (Ctor with optional payload Binds), a literal (Lit), or a
+// wildcard (`_`).
+type MatchArm struct {
+	Base
+	Ctor     string   // constructor name (lowercased compare), "" if not a ctor
+	Binds    []string // payload bindings for the constructor pattern
+	Lit      Expr     // literal pattern value, nil otherwise
+	Wildcard bool     // `_`
+	Body     Stmt
+}
+
+func (MatchStmt) stmtNode()      {}
+func (MatchStmt) String() string { return "match" }
+
 type TryStmt struct {
 	Base
 	Body    []Stmt
@@ -1012,6 +1036,21 @@ type EnumType struct {
 	Names []string
 }
 
+// SumType is an algebraic data type ({$MODE BPGO}): `(A, B(Integer), C(string,
+// Integer))`. Each variant has a name and zero or more payload field types.
+type SumType struct {
+	Base
+	Variants []SumVariant
+}
+
+type SumVariant struct {
+	Name   string
+	Fields []TypeExpr
+}
+
+func (SumType) typeExpr()      {}
+func (SumType) String() string { return "sum" }
+
 func (EnumType) typeExpr() {}
 func (e EnumType) String() string {
 	return "(" + strings.Join(e.Names, ", ") + ")"
@@ -1019,10 +1058,10 @@ func (e EnumType) String() string {
 
 type ObjectType struct {
 	Base
-	Name       string
-	Parent     string
-	Fields     []RecordField
-	Methods    []ProcDecl
+	Name        string
+	Parent      string
+	Fields      []RecordField
+	Methods     []ProcDecl
 	Properties  []PropertyDef
 	Implements  []string // interfaces a class implements: class(TParent, IFoo, IBar)
 	HelperFor   string   // non-empty for `record/class helper for Base`: extends Base

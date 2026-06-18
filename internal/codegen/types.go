@@ -143,6 +143,12 @@ func (g *gen) registerTypes(decls []ast.Decl) {
 				g.define(n, &vinfo{kind: vConst, constVal: ir.Value{Kind: ir.VKInt, Int: int64(i)}, typ: tInt})
 			}
 		}
+		// Sum-type variants register as ADT constructors (name -> arity).
+		if st, ok := td.Type.(*ast.SumType); ok {
+			for _, v := range st.Variants {
+				g.adtCtors[strings.ToLower(v.Name)] = len(v.Fields)
+			}
+		}
 	}
 }
 
@@ -193,6 +199,9 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 		return ti
 	case *ast.ProcType:
 		return &typeInfo{kind: ktFunc, isFunc: v.IsFunc}
+	case *ast.SumType:
+		// A sum value is a tagged record at runtime; the type carries no fields.
+		return &typeInfo{kind: ktRecord}
 	case *ast.RecordType:
 		ti := &typeInfo{kind: ktRecord}
 		for _, f := range v.Fields {
