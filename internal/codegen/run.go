@@ -74,6 +74,23 @@ var builtinFuncs = map[string]string{
 	"dateadddays":  "DateAddDays",
 	"datediffdays": "DateDiffDays",
 	"datevalid":    "DateValid",
+	// Business stdlib, part 2 (N8).
+	"roundto":         "RoundTo",
+	"roundmoney":      "RoundMoney",
+	"percent":         "Percent",
+	"addpercent":      "AddPercent",
+	"padleft":         "PadLeft",
+	"padright":        "PadRight",
+	"replace":         "Replace",
+	"onlydigits":      "OnlyDigits",
+	"isnumeric":       "IsNumeric",
+	"isinteger":       "IsInteger",
+	"split":           "Split",
+	"dayofweek":       "DayOfWeek",
+	"isweekend":       "IsWeekend",
+	"monthend":        "MonthEnd",
+	"age":             "Age",
+	"addbusinessdays": "AddBusinessDays",
 }
 
 func isBuiltinFunc(name string) bool {

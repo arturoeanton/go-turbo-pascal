@@ -108,6 +108,7 @@ func Register(vm *ir.VM) {
 	vm.Builtins["TypeOf"] = builtinTypeOf
 	registerSysUtils(vm)
 	registerBusiness(vm)
+	registerBusiness2(vm)
 }
 
 // SetArguments configures ParamStr(1..n) for the running program.
