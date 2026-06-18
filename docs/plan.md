@@ -25,6 +25,45 @@ seguridad, DX), luego el bloque de lenguaje Object Pascal moderno.
 
 Esfuerzo: S = horas · M = ~1 sesión · L = varias sesiones · XL = grande/multi-sesión.
 
+> **Serie D: completa** (v0.1.2 → v0.1.3). Todas las features D1–D11 implementadas,
+> testeadas y commiteadas. Además, **fase de integración** (v0.1.4 → v0.1.6):
+> unit HTTP (todos los verbos + headers), JSON (leer + construir), y SQL sobre
+> `database/sql` con driver inyectado por el host (cero-deps preservado).
+
+## Hoja de ruta E (lenguaje moderno + determinismo)
+
+Posicionamiento del producto: **el motor de scripting embebible para Go**. La
+serie E suma features de lenguaje modernas y la Fase F agrega el diferenciador
+estructural (ejecución determinística + snapshot). No se persigue paridad con
+Delphi/Lazarus ni una IDE TUI (descartada).
+
+**Regla transversal de compatibilidad:** toda sintaxis nueva se activa solo bajo
+el directivo `{$MODE BPGO}` (E1); sin él, el compilador es TP7 puro. Las palabras
+nuevas son **keywords contextuales** en ese modo. Esto blinda la compatibilidad.
+
+Orden: **E1 → E2 → E3 → E4 → E5 → E6 → F**.
+
+| ID | Título | Tipo | Descripción | Esfuerzo | Depende |
+|----|--------|------|-------------|----------|---------|
+| E1 | Gate de modo `{$MODE BPGO}` | Infra | Directivo de modo + keywords contextuales. Prerequisito de toda sintaxis nueva; sin él, TP7 puro. Barato y desbloquea todo. | S/M | — |
+| E2 | Ergonomía: inferencia local + `let` | Feature | `var x := expr` infiere el tipo del inicializador; `let x = expr` binding inmutable (error al reasignar). Solo compile-time, runtime intacto. | M | E1 |
+| E3 | Helpers + unit tests integrados | Feature | `record helper`/`class helper` de Delphi = extension methods (reusa el dispatch de métodos; permite extender tipos Go mapeados). Bloque `test "..." begin..end` + aserciones + runner en la CLI (reusa el VM + excepciones; corre en el sandbox). | M | E1 |
+| E4 | `match` + `Option/Some/None` | Feature | Tipos suma (ADTs con payload) + `match expr of Patrón => …; else …; end` con binding por destructuring. Absorbe la null-safety honesta (Option, no Kotlin-style). Sub-fases: (a) ADTs+match; (b) exhaustividad (best-effort o diferida). No reusar `with` (ya es keyword). | L | E1 |
+| E5 | `defer` / `panic` / `recover` | Feature | `panic`/`recover` mapean sobre `raise`/`except` existentes; `defer` = lista LIFO por frame ejecutada al retornar (reusa la maquinaria de `finally`). | M | E1 |
+| E6 | `spawn` + `Channel<T>` | Feature | Concurrencia estilo Go con **scheduler cooperativo** (green threads en un VM single-thread): `spawn` crea una fibra, el VM interleava `Step()`, los canales bloquean/ceden. **Reescritura del loop del VM** (N pilas + scheduler + puntos de yield). La apuesta grande; decisión consciente de inversión. | XL | E1 |
+| F (núcleo) | Ejecución determinística + snapshot/resume | Moat | Serializar todo el estado del VM (stack, frames, heap, globals, fibras) a bytes: pausar, reanudar, migrar, time-travel, replay determinístico. Único estructuralmente (goja/Lua no pueden). Habilita durable workflows / funciones reanudables. Requiere `Value`/heap 100% serializables (sin punteros Go crudos). | L/XL | E6 |
+| F (opcional) | Sandbox probable | Moat | Gas determinístico (extiende `MaxSteps`) + **inferencia de capacidad mínima** (analizar el código para derivar qué capacidades necesita) + allowlists finas + traza auditable. Se evalúa al final, una vez F-núcleo firme. | M/L | F-núcleo, E4 |
+
+Descartadas para enfocar (de las 5 ideas de moat): puente Go↔guest profundo,
+verificación estática (taint/contratos), artefacto portable/WASM.
+
+**Optimización de velocidad (diferida):** la reescritura grande del intérprete
+(NaN-boxing / VM de registros) se hace **después** de E6 + F, sobre el diseño del
+VM ya congelado — y solo la parte que una **medición real** justifique (en el
+caso embebible, el cuello suele ser red/DB, no el bucle del VM). Las
+optimizaciones quirúrgicas baratas (estilo D11) se hacen ad-hoc cuando una
+medición lo pida.
+
 > **Progreso reciente:** A1 (compile-once/run-many en `vmpas`) ✅, A2 (pool de
 > frames + args por slice; `fib(20)` de ~65k a ~88 allocs) ✅, B1 (unit `Crt`
 > conectada) ✅. Limpieza: `cmd/bprun` (muerto) y `internal/bgi` (vacío)
