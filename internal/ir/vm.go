@@ -397,6 +397,9 @@ func (vm *VM) Step(frame *Frame) bool {
 	case OPSetResult:
 		frame.Result = vm.pop()
 		return true
+	case OPAddrResult:
+		vm.Stack = append(vm.Stack, Value{Kind: VKPtr, Cell: &frame.Result})
+		return true
 	case OPLoadResult:
 		vm.Stack = append(vm.Stack, frame.Result)
 		return true

@@ -92,6 +92,7 @@ const (
 	// Procedural values / closures.
 	OPMakeClosure // pop A capture refs, push a VKFunc value (S=IR function name)
 	OPCallValue   // pop A args then a VKFunc; call it, binding captures + args
+	OPAddrResult  // push a reference to the current frame's result cell
 )
 
 func (o Op) String() string {

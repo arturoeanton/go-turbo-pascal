@@ -35,6 +35,7 @@ Estado real del soporte respecto a Turbo Pascal 7. Leyenda: ✅ soportado ·
 | Tipos procedurales y closures | ✅ | `type T = procedure/function(...)`, valor de rutina con `@R`, métodos anónimos `procedure/function(...) begin..end` con captura por referencia; llamar un valor en expresión requiere `()` |
 | Interfaces | ✅ | `IFoo = interface ... end`, `class(TBase, IFoo)`, variable de tipo interfaz con despacho dinámico al tipo concreto; sin conteo de referencias ni verificación estricta de implementación (duck-typing por tag de runtime) |
 | Genéricos (`TList<T>`, `Max<T>`) | ✅ | tipos y rutinas genéricas por **type erasure**: el parámetro de tipo se borra a "any" (el VM es dinámicamente tipado). Sin monomorfización ni chequeo de los argumentos de tipo; la instanciación `TList<Integer>` se erasa a `TList` |
+| Sobrecarga de operadores | ✅ | forma FPC global `operator + (a, b: T): T; begin Result := ...; end;`; despacho por tipos de operandos para `+ - * /` y comparaciones; usar `Result` en el cuerpo. Operandos deben ser identificadores/campos (el tipo de un operando que es a su vez una expresión compuesta no se infiere) |
 | Units (`uses`) | ✅ | interface / implementation / initialization de units de usuario |
 | `finalization` | 🚧 | se parsea, no se ejecuta |
 | Compilación separada `.tpu` | ❌ | las units se compilan desde fuente |

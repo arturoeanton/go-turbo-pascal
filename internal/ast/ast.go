@@ -532,6 +532,7 @@ func (v VarDecl) String() string {
 type ProcDecl struct {
 	Base
 	Name          string
+	OperatorSym   string   // non-empty for an operator overload: `operator + (...)`
 	TypeParams    []string // generic type parameters: function Max<T>(...)
 	Params        []Param
 	Result        *TypeRef

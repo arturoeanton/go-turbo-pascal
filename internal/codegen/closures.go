@@ -3,10 +3,63 @@ package codegen
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/arturoeanton/go-turbo-pascal/internal/ast"
 	"github.com/arturoeanton/go-turbo-pascal/internal/ir"
 )
+
+// registerOperator records a user operator overload, keyed by the operator
+// symbol and its two operand type names, so compileBinary can dispatch to it.
+func (g *gen) registerOperator(pd *ast.ProcDecl) {
+	left := paramTypeName(pd.Params, 0)
+	right := paramTypeName(pd.Params, 1)
+	if left == "" || right == "" {
+		return
+	}
+	key := strings.ToLower(pd.OperatorSym) + "|" + left + "|" + right
+	g.operators[key] = strings.ToLower(pd.Name)
+}
+
+// operatorFor returns the IR function name of an operator overload matching the
+// operator and the static types of its operands, or "" when none applies.
+func (g *gen) operatorFor(op string, left, right ast.Expr) string {
+	if len(g.operators) == 0 {
+		return ""
+	}
+	lt := typeInfoName(g.typeOf(left))
+	rt := typeInfoName(g.typeOf(right))
+	if lt == "" || rt == "" {
+		return ""
+	}
+	return g.operators[strings.ToLower(op)+"|"+lt+"|"+rt]
+}
+
+// paramTypeName returns the lowercase declared type name of the operator's
+// i-th operand (grouped parameters share a type).
+func paramTypeName(params []ast.Param, i int) string {
+	if len(params) == 0 {
+		return ""
+	}
+	if i >= len(params) {
+		i = len(params) - 1
+	}
+	if tr, ok := params[i].Type.(*ast.TypeRef); ok {
+		return strings.ToLower(tr.Name)
+	}
+	if params[i].Type != nil {
+		return strings.ToLower(params[i].Type.String())
+	}
+	return ""
+}
+
+// typeInfoName returns the lowercase name of a named type, or "".
+func typeInfoName(ti *typeInfo) string {
+	if ti == nil || ti.name == "" {
+		return ""
+	}
+	return strings.ToLower(ti.name)
+}
 
 // capVar is an enclosing local captured by an anonymous method (by reference).
 type capVar struct {

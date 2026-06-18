@@ -376,6 +376,11 @@ func (p *Parser) parseBlock(isProgram bool) *ast.Block {
 				blk.Procs = append(blk.Procs, pr)
 			}
 			p.match(lexer.TokSemicolon)
+		case "operator":
+			if pr := p.parseOperatorDecl(); pr != nil {
+				blk.Procs = append(blk.Procs, pr)
+			}
+			p.match(lexer.TokSemicolon)
 		case "uses":
 			// `uses` in a block is rare but allowed (TP7 tolerates it
 			// for compatibility with some unit conventions). We
@@ -390,7 +395,7 @@ func (p *Parser) parseBlock(isProgram bool) *ast.Block {
 
 func (p *Parser) isBlockStart(kw string) bool {
 	switch kw {
-	case "label", "const", "type", "var", "procedure", "function", "constructor", "destructor", "begin", "uses":
+	case "label", "const", "type", "var", "procedure", "function", "constructor", "destructor", "operator", "begin", "uses":
 		return true
 	}
 	return false
@@ -1083,6 +1088,77 @@ done:
 		}
 	}
 	return pr
+}
+
+// operatorNames maps an operator symbol to a name fragment for the generated
+// IR function. Used for both the unique function name and dispatch.
+var operatorNames = map[string]string{
+	"+": "add", "-": "sub", "*": "mul", "/": "div",
+	"=": "eq", "<>": "ne", "<": "lt", ">": "gt", "<=": "le", ">=": "ge",
+}
+
+// parseOperatorDecl parses an FPC-style operator overload:
+// `operator + (a, b: TVec): TVec; begin Result := ...; end;`.
+func (p *Parser) parseOperatorDecl() ast.Decl {
+	start := p.curPos()
+	p.advance() // operator
+	sym := p.cur().Text
+	p.advance() // the operator symbol token
+	pr := &ast.ProcDecl{Base: ast.Base{P: start}, IsFunc: true, OperatorSym: sym}
+	if p.match(lexer.TokLParen) {
+		for {
+			if p.check(lexer.TokRParen) {
+				break
+			}
+			pr.Params = append(pr.Params, p.parseParam())
+			if !p.match(lexer.TokSemicolon) {
+				break
+			}
+		}
+		p.expect(lexer.TokRParen)
+	}
+	// Optional FPC named result: `operator + (a, b: T) r: T`.
+	if p.cur().Kind == lexer.TokIdent {
+		p.advance()
+	}
+	if p.match(lexer.TokColon) {
+		if tr, ok := p.parseType().(*ast.TypeRef); ok {
+			pr.Result = tr
+		}
+	}
+	// Unique IR name from the operator and its operand type names so distinct
+	// overloads do not collide.
+	frag := operatorNames[sym]
+	if frag == "" {
+		frag = "op"
+	}
+	pr.Name = "$op_" + frag + "_" + operandTypeName(pr.Params, 0) + "_" + operandTypeName(pr.Params, 1)
+	for p.cur().Kind == lexer.TokSemicolon {
+		p.advance()
+	}
+	if p.is("begin") {
+		pr.Body = p.parseBlockBody()
+	}
+	return pr
+}
+
+// operandTypeName returns a lowercase type name for the operator's i-th operand
+// (grouped parameters share a type).
+func operandTypeName(params []ast.Param, i int) string {
+	if len(params) == 0 {
+		return ""
+	}
+	idx := i
+	if idx >= len(params) {
+		idx = len(params) - 1
+	}
+	if tr, ok := params[idx].Type.(*ast.TypeRef); ok {
+		return strings.ToLower(tr.Name)
+	}
+	if params[idx].Type != nil {
+		return strings.ToLower(params[idx].Type.String())
+	}
+	return ""
 }
 
 func (p *Parser) parseParam() ast.Param {

@@ -97,6 +97,7 @@ type gen struct {
 	labels    map[int]int                  // label number -> code index (per function)
 	gotoFix   []gotoRef                    // pending goto jumps to patch (per function)
 	vtables   map[string]map[string]string // type -> method -> ir func name
+	operators map[string]string            // "op|leftType|rightType" -> ir func name
 	dir       string                       // directory of the main source (unit lookup)
 	loaded    map[string]bool              // units already loaded
 	initFuncs []string                     // unit initialization functions to run first
@@ -164,6 +165,7 @@ func CompileWithOptions(src, file string, opts Options) (*ir.Program, error) {
 		presets:   presets,
 		autoLoop:  opts.AutoDeclareLoopVars,
 		vtables:   map[string]map[string]string{},
+		operators: map[string]string{},
 		dir:       filepath.Dir(file),
 		loaded:    map[string]bool{},
 	}
@@ -219,6 +221,9 @@ func (g *gen) compileProgram(p *ast.Program) {
 			if pd, ok := d.(*ast.ProcDecl); ok {
 				for _, tp := range pd.TypeParams { // erase generic routine params
 					g.registerTypeParam(tp)
+				}
+				if pd.OperatorSym != "" {
+					g.registerOperator(pd)
 				}
 				if !strings.Contains(pd.Name, ".") {
 					g.registerSignature(pd)
@@ -375,6 +380,12 @@ func (g *gen) compileRoutine(pd *ast.ProcDecl, fnName string, selfType *typeInfo
 		res := &vinfo{kind: vResult, typ: rti.vt(), ti: rti}
 		g.define(resultName, res)
 		g.define("Result", res)
+		// Initialize a structured result (record/array) so fields/elements of
+		// the result are addressable (`Result.field := ...`).
+		if needsInit(rti) {
+			g.pushZero(rti)
+			g.fn.Emit(ir.Instr{Op: ir.OPSetResult})
+		}
 	}
 
 	// Local consts/types/vars live in the nested block.
@@ -1206,6 +1217,9 @@ func (g *gen) compileAddrIdent(id *ast.Ident) {
 	case vVarParam:
 		// The slot already holds a reference to the caller's storage.
 		g.fn.Emit(ir.Instr{Op: ir.OPLoadLocal, A: int64(vi.slot)})
+	case vResult:
+		// Reference to the result cell (so `Result.field := ...` works).
+		g.fn.Emit(ir.Instr{Op: ir.OPAddrResult})
 	default:
 		g.errf("cannot take the address of %q", id.Name)
 	}
@@ -1312,6 +1326,14 @@ func (g *gen) typeOf(e ast.Expr) *typeInfo {
 
 func (g *gen) compileBinary(v *ast.BinaryExpr) {
 	op := strings.ToLower(v.Op)
+	// Operator overloading: a user-declared `operator <op> (a, b: T)` takes
+	// precedence over the built-in operator when both operand types match.
+	if fn := g.operatorFor(v.Op, v.Left, v.Right); fn != "" {
+		g.compileExpr(v.Left)
+		g.compileExpr(v.Right)
+		g.fn.Emit(ir.Instr{Op: ir.OPCall, S: fn, A: 2})
+		return
+	}
 	if isCompareOp(op) {
 		g.compileExpr(v.Left)
 		g.compileExpr(v.Right)

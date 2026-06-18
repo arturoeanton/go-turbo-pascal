@@ -153,6 +153,7 @@ var keywords = map[string]string{
 	"mod":            "MOD",
 	"near":           "NEAR",
 	"nil":            "NIL",
+	"operator":       "OPERATOR",
 	"not":            "NOT",
 	"object":         "OBJECT",
 	"of":             "OF",
