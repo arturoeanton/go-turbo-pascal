@@ -108,6 +108,7 @@ type gen struct {
 	modern     bool                         // {$MODE BPGO} extensions enabled
 	adtCtors   map[string]int               // ADT constructor name -> arity (sum types, Some/None)
 	tmpSeq     int                          // counter for synthesized match bindings
+	concurrent bool                         // program uses spawn/channels (scheduler needed)
 	deferFlags map[*ast.DeferStmt]string    // defer statement -> its "reached" flag binding
 	errs       []string
 }
@@ -190,7 +191,7 @@ func CompileWithOptions(src, file string, opts Options) (*ir.Program, error) {
 	if len(g.errs) > 0 {
 		return nil, fmt.Errorf("codegen errors: %s", strings.Join(g.errs, "; "))
 	}
-	return &ir.Program{Modules: []*ir.Module{g.mod}, Entry: "main", Vtables: g.vtables}, nil
+	return &ir.Program{Modules: []*ir.Module{g.mod}, Entry: "main", Vtables: g.vtables, Concurrent: g.concurrent}, nil
 }
 
 func (g *gen) errf(format string, args ...any) {
@@ -558,6 +559,8 @@ func (g *gen) compileStmt(s ast.Stmt) {
 		g.compileMatch(v)
 	case *ast.DeferStmt:
 		g.compileDefer(v)
+	case *ast.SpawnStmt:
+		g.compileSpawn(v)
 	case *ast.RaiseStmt:
 		if v.Expr != nil {
 			g.compileExpr(v.Expr)
@@ -860,6 +863,10 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 				return
 			}
 		}
+		// Channel operations: ch.Send(v) / ch.Receive / ch.Close.
+		if g.compileChanMethod(fe.Expr, fe.Field, c.Args, asStmt) {
+			return
+		}
 		// Extension method (helper) when the type has no such real method.
 		bt := g.typeOf(fe.Expr)
 		if !(bt != nil && bt.kind == ktObject && bt.hasMethod(fe.Field)) {
@@ -899,6 +906,12 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 			return
 		case "recover":
 			g.fn.Emit(ir.Instr{Op: ir.OPRecover})
+			if asStmt {
+				g.fn.Emit(ir.Instr{Op: ir.OPPop})
+			}
+			return
+		case "makechan":
+			g.compileMakeChan(c.Args)
 			if asStmt {
 				g.fn.Emit(ir.Instr{Op: ir.OPPop})
 			}
@@ -1190,6 +1203,13 @@ func (g *gen) compileExpr(e ast.Expr) {
 				break
 			}
 		}
+		// Bare channel receive used as an expression: ch.Receive.
+		if bt := g.typeOf(v.Expr); bt != nil && bt.kind == ktChan && lower(v.Field) == "receive" {
+			g.concurrent = true
+			g.compileExpr(v.Expr)
+			g.fn.Emit(ir.Instr{Op: ir.OPChanRecv})
+			break
+		}
 		// A property read resolves through its `read` specifier: a getter
 		// method becomes a call, a backing field becomes a field load. A bare
 		// parameterless method used in an expression is also a call.
@@ -1286,6 +1306,12 @@ func (g *gen) loadVar(name string) {
 		// recover used as a bare expression (modern mode).
 		if g.modern && low == "recover" && g.funcs[low] == nil {
 			g.fn.Emit(ir.Instr{Op: ir.OPRecover})
+			return
+		}
+		// MakeChan used without parentheses: an unbuffered channel.
+		if g.modern && low == "makechan" && g.funcs[low] == nil {
+			g.concurrent = true
+			g.fn.Emit(ir.Instr{Op: ir.OPMakeChan, A: 0})
 			return
 		}
 		// Nullary ADT constructor used as a value (e.g. None).

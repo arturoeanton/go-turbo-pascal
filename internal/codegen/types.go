@@ -21,6 +21,7 @@ const (
 	ktObject
 	ktFile
 	ktFunc // procedural type / closure (procedure or function value)
+	ktChan // channel (Channel<T>); concurrency
 )
 
 // objMethod describes a method declared on an object type.
@@ -181,6 +182,8 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 			return &typeInfo{kind: ktScalar, scalar: tChar}
 		case "boolean":
 			return &typeInfo{kind: ktScalar, scalar: tBool}
+		case "channel":
+			return &typeInfo{kind: ktChan}
 		case "text", "file":
 			return &typeInfo{kind: ktFile}
 		}
@@ -404,6 +407,8 @@ func (g *gen) zeroTemplate(ti *typeInfo) ir.Value {
 		return ir.Value{Kind: ir.VKArray, Array: arr}
 	case ktFunc:
 		return ir.Value{Kind: ir.VKFunc} // unassigned procedural value (nil)
+	case ktChan:
+		return ir.Value{Kind: ir.VKChan} // unassigned channel (nil until MakeChan)
 	}
 	return ir.Value{Kind: ir.VKInt}
 }

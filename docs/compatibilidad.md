@@ -86,6 +86,7 @@ normales, preservando la compatibilidad.
 | Tipos suma (ADTs) | ✅ | `type T = (A, B(Integer), C(string, Integer))`; constructores que construyen valores etiquetados; `Option` vía `Some(x)`/`None` integrados |
 | `match` / pattern matching | ✅ | **statement y expresión** (`x := match … end`); patrones: constructor con binding (`Some(v)`), constante/enum, literal, or-patterns (`1, 2, 3 =>`), `_`/`else`; **guards** (`P when cond =>`). Si no matchea y no hay `else`, lanza en runtime (no-exhaustivo). Exhaustividad estática: no chequeada |
 | `defer` / `panic` / `recover` | ✅ | `defer Stmt` corre al salir de la rutina (LIFO, también en panic, para cleanup); `panic(v)` lanza; `recover` (en un defer) captura el valor del panic y reanuda el retorno normal. defer en bucle corre una vez (limitación documentada) |
+| `spawn` / `Channel<T>` | ✅ | concurrencia cooperativa (scheduler de fibras propio); `spawn Stmt`, `MakeChan`/`MakeChan(n)`, `ch.Send/Receive/Close`; deadlock detectado en runtime. Sin paralelismo real ni `select` aún; globales compartidas sin sincronización. Programas sin concurrencia: cero overhead |
 
 ## Fuera de alcance (por ahora)
 

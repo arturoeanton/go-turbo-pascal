@@ -365,3 +365,126 @@ begin
   end;
 end.`, "cleanup\ncaught\n")
 }
+
+func TestSpawnChannelBasic(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var ch: Channel<Integer>; x: Integer;
+begin
+  ch := MakeChan;
+  spawn ch.Send(42);
+  x := ch.Receive;
+  WriteLn(x);
+end.`, "42\n")
+}
+
+func TestSpawnMultipleWorkers(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var ch: Channel<Integer>; i, total: Integer;
+begin
+  ch := MakeChan;
+  spawn ch.Send(10);
+  spawn ch.Send(20);
+  spawn ch.Send(30);
+  total := 0;
+  for i := 1 to 3 do
+    total := total + ch.Receive;
+  WriteLn(total);
+end.`, "60\n")
+}
+
+func TestSpawnCapturesAndBuffered(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var ch: Channel<Integer>; n: Integer;
+begin
+  ch := MakeChan(2);   { buffered: el productor no se bloquea }
+  n := 7;
+  spawn begin ch.Send(n * 2); ch.Send(n * 3); end;
+  WriteLn(ch.Receive, ' ', ch.Receive);
+end.`, "14 21\n")
+}
+
+func TestChannelPingPong(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var req, resp: Channel<Integer>; x: Integer;
+begin
+  req := MakeChan;
+  resp := MakeChan;
+  spawn begin
+    x := req.Receive;
+    resp.Send(x * x);
+  end;
+  req.Send(9);
+  WriteLn(resp.Receive);
+end.`, "81\n")
+}
+
+func TestSpawnDeadlockDetected(t *testing.T) {
+	// main receives but nobody ever sends -> all fibers blocked -> runtime error.
+	prog, err := Compile(`{$MODE BPGO}
+program P;
+var ch: Channel<Integer>; x: Integer;
+begin
+  ch := MakeChan;
+  x := ch.Receive;
+end.`, "t.pas")
+	if err != nil {
+		t.Fatalf("compile: %v", err)
+	}
+	if _, _, err := Run(prog, nil, ""); err == nil {
+		t.Fatal("expected a deadlock runtime error (all fibers blocked)")
+	}
+}
+
+func TestChannelCloseReceiveNil(t *testing.T) {
+	check(t, `{$MODE BPGO}
+program P;
+var ch: Channel<Integer>;
+begin
+  ch := MakeChan(4);
+  ch.Send(7);
+  ch.Close;
+  WriteLn(ch.Receive);              { 7 (valor en buffer) }
+  if ch.Receive = nil then WriteLn('cerrado');
+end.`, "7\ncerrado\n")
+}
+
+func TestSpawnFiberPanicCaught(t *testing.T) {
+	// A panic inside a spawned fiber, caught within that fiber, must not kill
+	// the program; main keeps running.
+	check(t, `{$MODE BPGO}
+program P;
+var ch: Channel<Integer>;
+begin
+  ch := MakeChan;
+  spawn begin
+    try
+      panic('boom');
+    except
+      ch.Send(99);
+    end;
+  end;
+  WriteLn(ch.Receive);
+end.`, "99\n")
+}
+
+func TestSpawnCapturesRoutineLocal(t *testing.T) {
+	// Inside a routine, a spawned fiber captures locals by reference (closure):
+	// the value it computes flows back to the routine via the channel.
+	check(t, `{$MODE BPGO}
+program P;
+function Compute(n: Integer): Integer;
+var ch: Channel<Integer>; factor: Integer;
+begin
+  ch := MakeChan;
+  factor := 3;
+  spawn ch.Send(n * factor);   { captura n y factor de la rutina }
+  Compute := ch.Receive;
+end;
+begin
+  WriteLn(Compute(7));
+end.`, "21\n")
+}

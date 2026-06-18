@@ -53,6 +53,8 @@ const (
 	// IR function name and Array holds the captured reference cells (each a
 	// VKPtr), bound to the function's leading var-parameters on call.
 	VKFunc
+	// VKChan is a channel: Ref holds *Channel.
+	VKChan
 )
 
 func (v Value) String() string {
@@ -128,6 +130,8 @@ func (v Value) String() string {
 			return "nil"
 		}
 		return "func(" + v.Str + ")"
+	case VKChan:
+		return "channel"
 	}
 	return "?"
 }
@@ -175,6 +179,60 @@ type VM struct {
 	handlers     []tryHandler // active exception handlers (try/except/finally)
 	excValue     Value        // the value of the exception being propagated
 	excActive    bool         // whether an exception is currently propagating
+	// Cooperative scheduler (spawn / channels). The fields above
+	// (Stack/CallStack/handlers/exc) are the *current* fiber's live execution
+	// state; switchTo saves/restores them. Globals/Heap/Builtins are shared.
+	cur         *Fiber   // currently executing fiber
+	runq        []*Fiber // runnable fibers (round-robin)
+	allFibers   []*Fiber // every live fiber (for deadlock detection)
+	yield       bool     // set by a blocking op to return control to the scheduler
+	nextFiberID int
+}
+
+// fiberStatus is a fiber's scheduling state.
+type fiberStatus int
+
+const (
+	fiberRunnable fiberStatus = iota
+	fiberBlocked              // parked on a channel
+	fiberDone
+)
+
+// Fiber is one cooperative thread of execution: its own operand stack, call
+// stack and exception state. The scheduler swaps a fiber's state into the VM's
+// live fields (Stack/CallStack/...) via switchTo. Because the VM owns every
+// fiber's state as plain data, the whole execution is serializable (the basis
+// for the deterministic snapshot/resume work in phase F).
+type Fiber struct {
+	ID        int
+	Stack     []Value
+	CallStack []*Frame
+	handlers  []tryHandler
+	excValue  Value
+	excActive bool
+	status    fiberStatus
+}
+
+// Channel is a typed communication channel (cooperative). An unbuffered channel
+// has cap 0: a send blocks until a receiver is ready (and vice versa). All
+// state is plain data, so channels are part of a serializable VM snapshot.
+type Channel struct {
+	buf    []Value
+	cap    int
+	recvq  []*Fiber     // fibers parked on receive (value delivered to their stack)
+	sendq  []parkedSend // fibers parked on send (carrying the value to deliver)
+	closed bool
+}
+
+type parkedSend struct {
+	fiber *Fiber
+	val   Value
+}
+
+// enqueue makes a fiber runnable and schedules it.
+func (vm *VM) enqueue(f *Fiber) {
+	f.status = fiberRunnable
+	vm.runq = append(vm.runq, f)
 }
 
 // tryHandler records a try block's recovery point.
@@ -539,6 +597,116 @@ func (vm *VM) Step(frame *Frame) bool {
 			vm.Stack = append(vm.Stack, Value{Kind: VKNil})
 		}
 		return true
+	case OPMakeChan:
+		c := &Channel{}
+		if ins.A == 1 {
+			c.cap = int(toInt(vm.pop()))
+			if c.cap < 0 {
+				c.cap = 0
+			}
+		}
+		vm.Stack = append(vm.Stack, Value{Kind: VKChan, Ref: c})
+		return true
+	case OPSpawn:
+		clo := vm.pop()
+		if clo.Kind != VKFunc {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
+		fn, ok := findFunc(vm.Program, clo.Str)
+		if !ok {
+			vm.RuntimeError = 3
+			vm.Halted = true
+			return false
+		}
+		nf := vm.getFrame(fn, nil)
+		for i := 0; i < len(clo.Array) && i < len(nf.Locals); i++ {
+			nf.Locals[i] = clo.Array[i] // captured cells -> leading var-params
+		}
+		vm.nextFiberID++
+		child := &Fiber{ID: vm.nextFiberID, CallStack: []*Frame{nf}, status: fiberRunnable}
+		vm.allFibers = append(vm.allFibers, child)
+		vm.runq = append(vm.runq, child)
+		return true
+	case OPChanSend:
+		v := vm.pop()
+		chv := vm.pop()
+		c, ok := chv.Ref.(*Channel)
+		if !ok || c == nil {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
+		if c.closed {
+			vm.RuntimeError = 219 // send on closed channel
+			vm.Halted = true
+			return false
+		}
+		if len(c.recvq) > 0 { // hand directly to a waiting receiver
+			r := c.recvq[0]
+			c.recvq = c.recvq[1:]
+			r.Stack = append(r.Stack, v)
+			vm.enqueue(r)
+			return true
+		}
+		if len(c.buf) < c.cap { // room in the buffer
+			c.buf = append(c.buf, v)
+			return true
+		}
+		// Block: park this fiber as a sender.
+		c.sendq = append(c.sendq, parkedSend{fiber: vm.cur, val: v})
+		vm.cur.status = fiberBlocked
+		vm.yield = true
+		return true
+	case OPChanRecv:
+		chv := vm.pop()
+		c, ok := chv.Ref.(*Channel)
+		if !ok || c == nil {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
+		if len(c.buf) > 0 {
+			v := c.buf[0]
+			c.buf = c.buf[1:]
+			// A parked sender can now move its value into the freed buffer slot.
+			if len(c.sendq) > 0 {
+				ps := c.sendq[0]
+				c.sendq = c.sendq[1:]
+				c.buf = append(c.buf, ps.val)
+				vm.enqueue(ps.fiber)
+			}
+			vm.Stack = append(vm.Stack, v)
+			return true
+		}
+		if len(c.sendq) > 0 { // take directly from a waiting sender
+			ps := c.sendq[0]
+			c.sendq = c.sendq[1:]
+			vm.enqueue(ps.fiber)
+			vm.Stack = append(vm.Stack, ps.val)
+			return true
+		}
+		if c.closed { // receive on a closed, drained channel -> nil
+			vm.Stack = append(vm.Stack, Value{Kind: VKNil})
+			return true
+		}
+		// Block: park this fiber as a receiver (the value arrives on its stack).
+		c.recvq = append(c.recvq, vm.cur)
+		vm.cur.status = fiberBlocked
+		vm.yield = true
+		return true
+	case OPChanClose:
+		chv := vm.pop()
+		if c, ok := chv.Ref.(*Channel); ok && c != nil {
+			c.closed = true
+			for _, r := range c.recvq { // wake receivers with nil
+				r.Stack = append(r.Stack, Value{Kind: VKNil})
+				vm.enqueue(r)
+			}
+			c.recvq = nil
+		}
+		return true
 	case OPSetLength:
 		tmpl := vm.pop()
 		n := int(toInt(vm.pop()))
@@ -627,9 +795,17 @@ func (vm *VM) Step(frame *Frame) bool {
 		// discard it with OPPop.
 		rv := frame.Result
 		if frame.Caller == nil {
-			vm.Halted = true
-			vm.ExitCode = int(rv.Int)
-			return false
+			// Root frame. For main this ends the program; for a spawned fiber
+			// it just finishes that fiber (pop, leaving the call stack empty).
+			if vm.cur == nil || vm.cur.ID == 0 {
+				vm.Halted = true
+				vm.ExitCode = int(rv.Int)
+				return false
+			}
+			vm.CallStack = vm.CallStack[:len(vm.CallStack)-1]
+			vm.putFrame(frame)
+			vm.cur.status = fiberDone
+			return true
 		}
 		// Drop any exception handlers left by this frame (e.g. an `exit` from
 		// inside a try) so they don't catch later, unrelated exceptions.
@@ -1054,8 +1230,91 @@ func (vm *VM) Run() {
 		return
 	}
 	frame := &Frame{Func: main, Locals: make([]Value, len(main.Locals)+len(main.Params))}
-	vm.CallStack = []*Frame{frame}
-	vm.runFrame(frame)
+	// Fast path: programs that never spawn or use channels run on a single
+	// fiber with the original tight loop — no scheduler, zero overhead.
+	if vm.Program == nil || !vm.Program.Concurrent {
+		vm.CallStack = []*Frame{frame}
+		vm.runFrame(frame)
+		return
+	}
+	mainFiber := &Fiber{ID: 0, CallStack: []*Frame{frame}, status: fiberRunnable}
+	vm.cur = mainFiber
+	vm.allFibers = []*Fiber{mainFiber}
+	vm.loadFiber(mainFiber)
+	vm.schedule()
+}
+
+// schedule is the cooperative scheduler: it runs the current fiber until it
+// blocks, finishes or the program halts, then picks the next runnable fiber.
+// When main (fiber 0) finishes, the program ends (like Go). If no fiber is
+// runnable but some are blocked, it is a deadlock.
+func (vm *VM) schedule() {
+	for !vm.Halted {
+		vm.runCurrent()
+		if vm.Halted {
+			return
+		}
+		if vm.cur.status == fiberDone && vm.cur.ID == 0 {
+			return // main returned: program ends
+		}
+		next := vm.dequeueRunnable()
+		if next == nil {
+			for _, f := range vm.allFibers {
+				if f.status == fiberBlocked {
+					vm.RuntimeError = 218 // all fibers blocked: deadlock
+					vm.Halted = true
+					return
+				}
+			}
+			return // everything finished
+		}
+		vm.switchTo(next)
+	}
+}
+
+// runCurrent runs the current fiber until it parks on a channel (vm.yield), its
+// call stack empties (done), or the program halts.
+func (vm *VM) runCurrent() {
+	for !vm.Halted {
+		if len(vm.CallStack) == 0 {
+			vm.cur.status = fiberDone
+			return
+		}
+		vm.Step(vm.CallStack[len(vm.CallStack)-1])
+		if vm.yield {
+			vm.yield = false
+			return
+		}
+	}
+}
+
+// switchTo saves the current fiber's live state and loads the target's.
+func (vm *VM) switchTo(f *Fiber) {
+	vm.saveFiber(vm.cur)
+	vm.cur = f
+	vm.loadFiber(f)
+}
+
+func (vm *VM) saveFiber(f *Fiber) {
+	f.Stack, f.CallStack = vm.Stack, vm.CallStack
+	f.handlers, f.excValue, f.excActive = vm.handlers, vm.excValue, vm.excActive
+}
+
+func (vm *VM) loadFiber(f *Fiber) {
+	vm.Stack, vm.CallStack = f.Stack, f.CallStack
+	vm.handlers, vm.excValue, vm.excActive = f.handlers, f.excValue, f.excActive
+}
+
+// dequeueRunnable removes and returns the next runnable fiber (FIFO), or nil.
+func (vm *VM) dequeueRunnable() *Fiber {
+	for len(vm.runq) > 0 {
+		f := vm.runq[0]
+		vm.runq = vm.runq[1:]
+		if f.status == fiberRunnable {
+			return f
+		}
+	}
+	return nil
 }
 
 // runFrame drives execution starting from the given frame until that frame

@@ -96,6 +96,12 @@ const (
 	// Algebraic data types / pattern matching.
 	OPMkTagged // pop A payloads, push a tagged record {__tag:S, __0..__(A-1)}
 	OPRecover  // push the active panic value and clear it (or nil if none)
+	// Concurrency (cooperative scheduler): spawn and channels.
+	OPSpawn     // pop a closure value, start it as a new fiber
+	OPMakeChan  // pop buffer size (A=1) or none (A=0), push a new channel
+	OPChanSend  // pop value, pop channel; send (may park the fiber)
+	OPChanRecv  // pop channel; push received value (may park the fiber)
+	OPChanClose // pop channel; close it
 )
 
 func (o Op) String() string {
@@ -194,6 +200,9 @@ type Program struct {
 	// (lowercased method name -> IR function name). Tables are flattened to
 	// include inherited methods, so OPCallMethod can resolve dynamically.
 	Vtables map[string]map[string]string
+	// Concurrent is set when the program uses spawn/channels. When false the VM
+	// runs main on a fast single-fiber path with no scheduler overhead.
+	Concurrent bool
 }
 
 func NewFunction(name string) *Function {

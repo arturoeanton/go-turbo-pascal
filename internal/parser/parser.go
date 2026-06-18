@@ -1365,6 +1365,12 @@ func (p *Parser) parseStmt() ast.Stmt {
 		p.advance()
 		return &ast.DeferStmt{Base: ast.Base{P: dstart}, Stmt: p.parseStmt()}
 	}
+	// {$MODE BPGO}: `spawn Stmt` runs Stmt as a new fiber.
+	if p.isContextualKw("spawn") {
+		sstart := p.curPos()
+		p.advance()
+		return &ast.SpawnStmt{Base: ast.Base{P: sstart}, Stmt: p.parseStmt()}
+	}
 	switch t.Kind {
 	case lexer.TokKeyword:
 		switch t.Lower {

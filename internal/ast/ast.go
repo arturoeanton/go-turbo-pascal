@@ -720,6 +720,16 @@ type ForStmt struct {
 	Body Stmt
 }
 
+// SpawnStmt is `spawn Stmt` ({$MODE BPGO}): Stmt runs as a new cooperative
+// fiber. It captures the enclosing scope by reference (like a closure).
+type SpawnStmt struct {
+	Base
+	Stmt Stmt
+}
+
+func (SpawnStmt) stmtNode()      {}
+func (SpawnStmt) String() string { return "spawn" }
+
 // DeferStmt is `defer Stmt` ({$MODE BPGO}): Stmt runs when the enclosing routine
 // exits (normally or via a panic), in reverse order of the defers reached.
 type DeferStmt struct {
