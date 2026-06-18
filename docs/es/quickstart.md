@@ -30,7 +30,7 @@ bin/pasrun hola.pas        # -> Hola, mundo!
 Es Turbo Pascal 7 real: procedimientos/funciones, records, arrays (estáticos y
 dinámicos), sets, punteros, `class`/`object` con herencia y métodos virtuales,
 interfaces, genéricos, closures, excepciones, units, archivos. Ver la matriz en
-[`compatibilidad.md`](compatibilidad.md).
+[`compatibilidad.md`](compatibility.md).
 
 ## 2. Modo moderno: `{$MODE BPGO}`
 
@@ -73,7 +73,7 @@ Las features modernas, en guías dedicadas:
 - **[match / tipos suma / Option](match.md)** — `match`, ADTs, `Some`/`None`.
 - **[defer / panic / recover](defer.md)** — limpieza garantizada y manejo de panics.
 - **[spawn / channels](concurrency.md)** — concurrencia cooperativa.
-- Otras (en [`compatibilidad.md`](compatibilidad.md)): inferencia local, `let`
+- Otras (en [`compatibilidad.md`](compatibility.md)): inferencia local, `let`
   inmutable, *extension methods* (`record/class helper`), unit tests integrados
   (`test … AssertEqual …`).
 
@@ -188,6 +188,6 @@ Ver [`editores.md`](editores.md).
 
 ## Siguiente
 
-- Matriz de compatibilidad y extensiones: [`compatibilidad.md`](compatibilidad.md)
+- Matriz de compatibilidad y extensiones: [`compatibilidad.md`](compatibility.md)
 - Arquitectura del compilador/VM: [`arquitectura.md`](arquitectura.md)
 - Plan y roadmap: [`plan.md`](plan.md)

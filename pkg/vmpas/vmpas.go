@@ -36,11 +36,11 @@ import (
 // Capabilities is the sandbox configuration for an Engine. The zero value is
 // fully restricted (default-deny).
 type Capabilities struct {
-	FileSystem  bool          // allow file I/O (Assign/Reset/Rewrite/...)
-	Network     bool          // allow the HTTP host builtins (Http* )
-	Exec        bool          // allow the Exec host builtin (run processes)
-	Env         bool          // allow the GetEnv host builtin
-	Database    bool          // allow the SQL host builtins (Db*); needs UseDB
+	FileSystem   bool          // allow file I/O (Assign/Reset/Rewrite/...)
+	Network      bool          // allow the HTTP host builtins (Http* )
+	Exec         bool          // allow the Exec host builtin (run processes)
+	Env          bool          // allow the GetEnv host builtin
+	Database     bool          // allow the SQL host builtins (Db*); needs UseDB
 	MaxSteps     int           // VM step limit (0 = engine default)
 	MaxHeap      int           // max heap allocations (0 = unlimited)
 	MaxOutput    int           // max captured output bytes (0 = unlimited)

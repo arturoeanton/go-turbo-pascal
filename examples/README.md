@@ -59,7 +59,7 @@ go run ./examples/durable
 Una regla de aprobación de gastos se ejecuta hasta que necesita una decisión
 humana: se pausa con `Suspend`, el host serializa el estado (`RunDurable` →
 `*State`), inyecta la respuesta y reanuda en un engine nuevo (`ResumeDurable`),
-continuando exactamente donde quedó. Ver [`../docs/durable.md`](../docs/durable.md).
+continuando exactamente donde quedó. Ver [`../docs/es/durable.md`](../docs/es/durable.md).
 
-Ver también [`../docs/inicio.md`](../docs/inicio.md) y la sección de
-integración en [`../docs/vmpas.md`](../docs/vmpas.md).
+Ver también [`../docs/es/inicio.md`](../docs/es/inicio.md) y la sección de
+integración en [`../docs/es/vmpas.md`](../docs/es/vmpas.md).

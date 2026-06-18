@@ -194,12 +194,12 @@ type VM struct {
 	// It is distinct from Halted+RuntimeError: a suspended VM has no error.
 	Suspended bool
 	Trace     bool
-	Builtins     map[string]Builtin
-	Args         []string
-	framePool    []*Frame     // reusable call frames (reduces per-call allocations)
-	handlers     []tryHandler // active exception handlers (try/except/finally)
-	excValue     Value        // the value of the exception being propagated
-	excActive    bool         // whether an exception is currently propagating
+	Builtins  map[string]Builtin
+	Args      []string
+	framePool []*Frame     // reusable call frames (reduces per-call allocations)
+	handlers  []tryHandler // active exception handlers (try/except/finally)
+	excValue  Value        // the value of the exception being propagated
+	excActive bool         // whether an exception is currently propagating
 	// Cooperative scheduler (spawn / channels). The fields above
 	// (Stack/CallStack/handlers/exc) are the *current* fiber's live execution
 	// state; switchTo saves/restores them. Globals/Heap/Builtins are shared.

@@ -55,7 +55,7 @@ records-como-slices es el mejor ROI y ayuda a F); la concurrencia se cierra con
 | ID | Título | Qué | Prioridad |
 |----|--------|-----|-----------|
 | N5 ✅ | Mejorar N4 | **Hecho.** Chequeos de tipo más profundos y seguros (compat. de asignaciones por categoría, sin falsos positivos sobre TP7 válido). | Alta |
-| N6 | **Congelar/versionar la API de `vmpas`** | Será cimiento de varios productos propietarios; romperla los rompe. Definir la superficie pública estable, versionar (semver), tests de contrato de la API. **Riesgo si no se hace.** | Alta (futuro) |
+| N6 ✅ | **Congelar/versionar la API de `vmpas`** | **Hecho.** Superficie pública estable documentada ([api.md](api.md)) con política semver; test de contrato (`api_contract_test.go`) que fija firmas y campos en tiempo de compilación; `LICENSE` (MIT), `CHANGELOG.md` y CI (build+vet+test). | Alta |
 | N7 ✅ | Hardening multi-tenant SaaS | **Hecho.** `Capabilities.MaxOutput`/`MaxCallDepth` (límites duros en la VM), reset de estado de host transitorio entre ejecuciones, preset `Sandboxed()` y API `RunSandboxed`; patrón un-Engine-por-tenant documentado (docs/vmpas.md) + ejemplo `examples/multitenant`. | Alta |
 | N8 ✅ | Expandir stdlib (ERP/contabilidad/stock/RRHH/CMS/DMS) | **Hecho.** Redondeo/IVA/porcentajes, días hábiles/edad/fin-de-mes/día-de-semana, padding/replace/máscaras de dígitos, validaciones numéricas, split. Verticales como paquetes aparte. | Media |
 

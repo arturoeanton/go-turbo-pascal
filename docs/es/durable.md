@@ -60,7 +60,7 @@ final, err := eng.ResumeDurable(rule, state)  // continúa tras el Suspend
 // final == nil -> terminó; final != nil -> se volvió a pausar
 ```
 
-Ver el ejemplo ejecutable en [`../examples/durable`](../examples/durable).
+Ver el ejemplo ejecutable en [`../examples/durable`](../../examples/durable).
 
 ## Qué se captura
 

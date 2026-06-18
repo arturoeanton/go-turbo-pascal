@@ -160,4 +160,4 @@ fibra.
 ## Ver también
 
 - [defer / panic / recover](defer.md)
-- [Compatibilidad TP7 y extensiones modernas](compatibilidad.md)
+- [Compatibilidad TP7 y extensiones modernas](compatibility.md)

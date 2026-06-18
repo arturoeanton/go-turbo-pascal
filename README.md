@@ -39,20 +39,14 @@ eng.Run(`for i := 1 to 5 do total := total + i`)
 // total == 25
 ```
 
-Documentación (en español):
-[Quickstart](docs/quickstart.md) ·
-[Inicio rápido](docs/inicio.md) ·
-[vmpas (embeber Pascal)](docs/vmpas.md) ·
-[Arquitectura](docs/arquitectura.md) ·
-[Editores (LSP/DAP, VSCode, Zed)](docs/editores.md) ·
-[Compatibilidad TP7](docs/compatibilidad.md) ·
-[match / tipos suma / Option](docs/match.md) ·
-[defer / panic / recover](docs/defer.md) ·
-[spawn / channels](docs/concurrency.md) ·
-[Ejecución durable (snapshot/resume)](docs/durable.md) ·
-[Estado y viabilidad](docs/estado.md) ·
-[Plan y auditoría](docs/plan.md) ·
-[Ejemplos](examples/README.md).
+Documentación / Documentation: **🇪🇸 [español](docs/es/README.md)** · **🇬🇧 [English](docs/en/README.md)** · [Ejemplos / Examples](examples/README.md).
+
+Atajos (ES): [Quickstart](docs/es/quickstart.md) ·
+[vmpas (embeber Pascal)](docs/es/vmpas.md) ·
+[Ejecución durable (snapshot/resume)](docs/es/durable.md) ·
+[match / Option](docs/es/match.md) ·
+[spawn / channels](docs/es/concurrency.md) ·
+[Compatibilidad TP7](docs/es/compatibility.md).
 
 ## Build and test
 
@@ -145,7 +139,7 @@ report that the user can review to gauge compatibility.
 
 ## Status
 
-See `docs/compatibility.md` for the current compatibility matrix and
+See `docs/en/compatibility.md` for the current compatibility matrix and
 `compat/report.json` for the machine-generated report. The
 compatibility harness reports the pass ratio of the corpus and the
 percentage of each unit's symbols that are implemented.

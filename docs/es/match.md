@@ -246,5 +246,5 @@ end.
 
 ## Ver también
 
-- [Compatibilidad TP7 y extensiones modernas](compatibilidad.md)
+- [Compatibilidad TP7 y extensiones modernas](compatibility.md)
 - [Embeber Pascal en Go (`vmpas`)](vmpas.md)

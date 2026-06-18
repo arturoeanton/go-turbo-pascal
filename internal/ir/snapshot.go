@@ -42,7 +42,7 @@ type snapshot struct {
 	Globals  []globalSnap
 	Heap     []cellSnap
 	Stack    []cellSnap
-	Frames   []frameSnap   // call stack, bottom (main) first
+	Frames   []frameSnap // call stack, bottom (main) first
 	Handlers []handlerSnap
 	// Orphans are heap cells (allocated by New) reachable only through pointers,
 	// not through the ownership tree. Each is standalone storage on resume.
@@ -129,11 +129,11 @@ func progFingerprint(p *Program) uint64 {
 // --- encoding ---
 
 type snapEncoder struct {
-	targetID  map[*Value]int   // alias-target cell address -> id
-	next      int              //
-	ownedAddr map[*Value]bool  // cells that live in some ownership tree
-	visited   map[*Value]bool  // cells already scheduled as an orphan tree
-	orphans   []*Value         // discovered orphan-cell roots, in id order
+	targetID  map[*Value]int  // alias-target cell address -> id
+	next      int             //
+	ownedAddr map[*Value]bool // cells that live in some ownership tree
+	visited   map[*Value]bool // cells already scheduled as an orphan tree
+	orphans   []*Value        // discovered orphan-cell roots, in id order
 }
 
 func (e *snapEncoder) assignID(p *Value) int {

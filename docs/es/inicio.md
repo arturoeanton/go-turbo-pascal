@@ -68,7 +68,7 @@ Detalles en [`editores.md`](editores.md).
 
 ## Lenguaje soportado
 
-Ver la [matriz de compatibilidad](compatibilidad.md). El núcleo procedural +
+Ver la [matriz de compatibilidad](compatibility.md). El núcleo procedural +
 OOP + I/O + units está soportado; algunas características de TP7 siguen
 pendientes (con `with`, archivos tipados, etc.).
 

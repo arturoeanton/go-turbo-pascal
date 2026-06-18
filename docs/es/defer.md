@@ -165,4 +165,4 @@ de atrapar sin escribir un `try/except` explícito.
 ## Ver también
 
 - [match / tipos suma / Option](match.md)
-- [Compatibilidad TP7 y extensiones modernas](compatibilidad.md)
+- [Compatibilidad TP7 y extensiones modernas](compatibility.md)

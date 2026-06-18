@@ -95,4 +95,4 @@ Ambas direcciones son **viables** y el núcleo está sólido y testeado. Para (A
 trabajo restante es de rendimiento y amplitud de binding; para (B) es cobertura
 de RTL (sobre todo `Crt`) y algunas características de lenguaje. Ninguno requiere
 rehacer el diseño: son extensiones incrementales sobre lo ya construido. Ver la
-[matriz de compatibilidad](compatibilidad.md) para el detalle por característica.
+[matriz de compatibilidad](compatibility.md) para el detalle por característica.
