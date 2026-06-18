@@ -1090,6 +1090,10 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 	}
 
 	if fe, ok := g.funcs[name]; ok {
+		// Semantic check: a user routine takes a fixed number of arguments.
+		if len(c.Args) != len(fe.params) {
+			g.errf("%q expects %d argument(s), got %d", id.Name, len(fe.params), len(c.Args))
+		}
 		// User-defined procedure/function: honour var parameters.
 		for i, a := range c.Args {
 			if i < len(fe.params) && fe.params[i].varParam {

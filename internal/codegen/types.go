@@ -174,13 +174,14 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 		switch low {
 		case "string", "ansistring", "shortstring", "widestring", "unicodestring", "pchar":
 			return &typeInfo{kind: ktString, scalar: tStr}
-		case "integer", "longint", "word", "byte", "shortint":
+		case "integer", "longint", "word", "byte", "shortint",
+			"cardinal", "longword", "smallint", "int64", "qword", "nativeint", "nativeuint":
 			return &typeInfo{kind: ktScalar, scalar: tInt}
 		case "real", "single", "double", "extended", "comp":
 			return &typeInfo{kind: ktScalar, scalar: tReal}
-		case "char":
+		case "char", "ansichar", "widechar":
 			return &typeInfo{kind: ktScalar, scalar: tChar}
-		case "boolean":
+		case "boolean", "bytebool", "wordbool", "longbool":
 			return &typeInfo{kind: ktScalar, scalar: tBool}
 		case "channel":
 			return &typeInfo{kind: ktChan}
@@ -190,7 +191,9 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 		if known, ok := g.types[low]; ok {
 			return known
 		}
-		// Unknown name: treat as opaque integer-ish scalar.
+		// Genuinely undefined type name (typo, missing declaration). Report it
+		// but keep going with an opaque type so later errors still surface.
+		g.errfAt(v.Pos(), "unknown type %q", v.Name)
 		return &typeInfo{kind: ktScalar, scalar: tUnknown, name: v.Name}
 	case *ast.PointerType:
 		ti := &typeInfo{kind: ktPointer}
