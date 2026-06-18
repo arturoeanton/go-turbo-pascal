@@ -51,6 +51,10 @@ type Capabilities struct {
 	// same output and state. Required for reliable snapshot/resume (phase F).
 	Deterministic bool
 	Seed          int64
+	// Audit records every call to a capability-gated host builtin (file,
+	// network, exec, env, database) in execution order; retrieve it with
+	// Engine.AuditLog after a run.
+	Audit bool
 }
 
 // Sandboxed returns a safe, bounded capability set suitable for running
@@ -103,6 +107,7 @@ type Engine struct {
 	httpStatus  int               // status code of the last HTTP call (HttpLastStatus)
 	httpHeaders map[string]string // headers applied to subsequent HTTP requests
 	suspendTag  string            // tag from the last Suspend call (durable runs)
+	audit       []AuditEntry      // capability-gated calls recorded this run (Audit cap)
 }
 
 // UseDB binds a database handle for the Db* host builtins. The handle is the
@@ -285,6 +290,7 @@ func (e *Engine) execLocked(prog *ir.Program) error {
 	// Reset per-run host state so nothing leaks across runs (important when an
 	// engine is reused for successive tenant requests).
 	e.cursor, e.dbErr, e.httpStatus, e.httpHeaders = nil, "", 0, nil
+	e.audit = nil
 	e.seedVars(vm)
 
 	vm.Run()
@@ -502,6 +508,9 @@ func (e *Engine) registerRuntime(vm *ir.VM) {
 	for n, fn := range e.procs {
 		vm.Builtins[n] = makeBuiltin(fn)
 	}
+	// Wrap gated builtins for the audit log (before aliasLowercase mirrors them,
+	// so the lowercase aliases codegen calls point at the wrapped functions).
+	e.installAudit(vm)
 }
 
 func (e *Engine) seedVars(vm *ir.VM) {

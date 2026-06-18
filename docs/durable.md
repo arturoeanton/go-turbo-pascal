@@ -97,6 +97,43 @@ del programa compilado se guarda en el snapshot y se valida al reanudar (cambiar
 el código —incluso un literal— invalida un estado viejo, evitando que PCs e
 índices de slots se desalineen en silencio).
 
+## Sandbox: inferencia de capacidades y traza auditable
+
+Dos herramientas para correr scripts no confiables con *least-privilege* y
+trazabilidad (útiles en multi-tenant y cumplimiento).
+
+### Inferencia de capacidad mínima
+
+`Engine.Analyze(code)` compila el script y reporta **qué capacidades necesita**
+escaneando el bytecode en busca de llamadas a builtins de host gateados. No
+ejecuta nada y funciona aunque el engine esté restringido — así podés conceder
+exactamente lo que el script usa, o rechazarlo si pide de más.
+
+```go
+rep, _ := eng.Analyze(src)
+// rep.Required -> p.ej. [Env Network]
+// rep.Needs(vmpas.CapFileSystem) -> false
+// rep.Calls[vmpas.CapNetwork]    -> ["httpget"]
+if rep.Needs(vmpas.CapExec) {
+    return errors.New("este tenant no puede ejecutar procesos")
+}
+```
+
+### Traza auditable
+
+Con `Capabilities.Audit`, cada llamada a un builtin gateado (archivo, red,
+exec, env, base de datos) se registra **en orden de ejecución** con sus
+argumentos. El log es determinista y se combina con el snapshot/resume para
+replay forense.
+
+```go
+eng := vmpas.NewWith(vmpas.Capabilities{Network: true, Audit: true})
+_ = eng.Run(src)
+for _, ev := range eng.AuditLog() {
+    log.Printf("%s %s%v", ev.Capability, ev.Builtin, ev.Args)
+}
+```
+
 ## Alcance (v1)
 
 - **Programas no concurrentes**: el snapshot soporta la ejecución de una sola

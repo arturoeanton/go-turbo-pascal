@@ -129,6 +129,8 @@ eng := vmpas.NewWith(vmpas.Full())
 | `MaxOutput`    | máximo de bytes de salida capturada (0 = sin límite)            |
 | `MaxCallDepth` | máxima profundidad de pila de llamadas (0 = sin límite)         |
 | `MaxDuration`  | límite de tiempo de pared de ejecución (0 = sin límite)         |
+| `Deterministic` / `Seed` | ejecución reproducible (ver [durable.md](durable.md)) |
+| `Audit`        | registra cada llamada gateada (`Engine.AuditLog`); ver [durable.md](durable.md) |
 
 Las capacidades se aplican en el límite Go↔Pascal: los builtins prohibidos no
 se registran, así que llamarlos es un **error de compilación** (no un fallo en

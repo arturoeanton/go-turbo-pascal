@@ -76,6 +76,9 @@ func (e *Engine) runDurableLocked(prog *ir.Program, st *State) (*State, error) {
 	vm.Builtins = e.prepareBuiltins()
 	e.cursor, e.dbErr, e.httpStatus, e.httpHeaders = nil, "", 0, nil
 	e.suspendTag = ""
+	if st == nil {
+		e.audit = nil // fresh run; a resume keeps accumulating across segments
+	}
 	if st != nil {
 		vm.Output.WriteString(st.Output) // keep output cumulative across segments
 	}
