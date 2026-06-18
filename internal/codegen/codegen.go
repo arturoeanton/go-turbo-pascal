@@ -48,12 +48,13 @@ const (
 )
 
 type vinfo struct {
-	kind     varKind
-	slot     int       // frame slot for local/param/varparam
-	gname    string    // global name for vGlobal
-	constVal ir.Value  // value for vConst
-	typ      vtype     // coarse type (scalar formatting / operator choice)
-	ti       *typeInfo // resolved type (records, arrays, pointers, enums)
+	kind      varKind
+	slot      int       // frame slot for local/param/varparam
+	gname     string    // global name for vGlobal
+	constVal  ir.Value  // value for vConst
+	typ       vtype     // coarse type (scalar formatting / operator choice)
+	ti        *typeInfo // resolved type (records, arrays, pointers, enums)
+	immutable bool      // `let` binding: reassignment is a compile error
 }
 
 type paramInfo struct {
@@ -140,6 +141,7 @@ func CompileWithOptions(src, file string, opts Options) (*ir.Program, error) {
 		return nil, fmt.Errorf("lex errors: %v", errs)
 	}
 	p := parser.New(l.Tokens())
+	p.SetModern(l.ModeBPGo())
 	p.SetFile(file)
 	node := p.ParseUnit()
 	if errs := p.Errors(); len(errs) > 0 {
@@ -285,18 +287,56 @@ func (g *gen) declareGlobals(decls []ast.Decl) {
 		if !ok {
 			continue
 		}
-		ti := g.resolveType(vd.Type)
+		ti := g.declType(vd)
 		t := ti.vt()
 		for _, name := range vd.Names {
 			g.mod.Globals = append(g.mod.Globals, ir.Global{Name: name, Type: typeTag(t)})
-			g.define(name, &vinfo{kind: vGlobal, gname: name, typ: t, ti: ti})
-			// Aggregates and non-int scalars need an explicit zero value, unless
-			// the embedder seeds this global before running (preset).
-			if needsInit(ti) && !g.presets[strings.ToLower(name)] {
+			g.define(name, &vinfo{kind: vGlobal, gname: name, typ: t, ti: ti, immutable: vd.Immutable})
+			switch {
+			case vd.Init != nil:
+				// var x := expr / var x: T = expr / let x = expr
+				g.compileExpr(vd.Init)
+				g.fn.Emit(ir.Instr{Op: ir.OPStoreGlobal, S: name})
+			case needsInit(ti) && !g.presets[strings.ToLower(name)]:
+				// Aggregates and non-int scalars need an explicit zero value,
+				// unless the embedder seeds this global before running.
 				g.pushZero(ti)
 				g.fn.Emit(ir.Instr{Op: ir.OPStoreGlobal, S: name})
 			}
 		}
+	}
+}
+
+// declType resolves a declaration's type: explicit when given, otherwise
+// inferred from the initializer ({$MODE BPGO}: var x := expr / let x = expr).
+func (g *gen) declType(vd *ast.VarDecl) *typeInfo {
+	if vd.Type != nil {
+		return g.resolveType(vd.Type)
+	}
+	if vd.Init != nil {
+		return g.inferType(vd.Init)
+	}
+	return &typeInfo{kind: ktScalar, scalar: tInt}
+}
+
+// inferType derives a type from an initializer expression. lvalue expressions
+// (an identifier, field or element of a known type) infer their full type;
+// everything else falls back to the coarse scalar/string category.
+func (g *gen) inferType(e ast.Expr) *typeInfo {
+	if ti := g.typeOf(e); ti != nil {
+		return ti
+	}
+	switch g.exprType(e) {
+	case tStr:
+		return &typeInfo{kind: ktString, scalar: tStr}
+	case tReal:
+		return &typeInfo{kind: ktScalar, scalar: tReal}
+	case tBool:
+		return &typeInfo{kind: ktScalar, scalar: tBool}
+	case tChar:
+		return &typeInfo{kind: ktScalar, scalar: tChar}
+	default:
+		return &typeInfo{kind: ktScalar, scalar: tInt}
 	}
 }
 
@@ -397,27 +437,38 @@ func (g *gen) compileRoutine(pd *ast.ProcDecl, fnName string, selfType *typeInfo
 		g.registerTypes(pd.Nested.Types)
 	}
 	g.declareConsts(consts, false)
-	var localInits []*vinfo
+	var localInits []struct {
+		vi   *vinfo
+		init ast.Expr
+	}
 	for _, d := range locals {
 		vd, ok := d.(*ast.VarDecl)
 		if !ok {
 			continue
 		}
-		lti := g.resolveType(vd.Type)
+		lti := g.declType(vd)
 		for _, n := range vd.Names {
-			vi := &vinfo{kind: vLocal, slot: slot, typ: lti.vt(), ti: lti}
+			vi := &vinfo{kind: vLocal, slot: slot, typ: lti.vt(), ti: lti, immutable: vd.Immutable}
 			g.define(n, vi)
 			fn.Locals = append(fn.Locals, n)
-			localInits = append(localInits, vi)
+			localInits = append(localInits, struct {
+				vi   *vinfo
+				init ast.Expr
+			}{vi, vd.Init})
 			slot++
 		}
 	}
 
-	// Zero-initialize locals whose zero value is not integer 0.
-	for _, vi := range localInits {
-		if needsInit(vi.ti) {
-			g.pushZero(vi.ti)
-			fn.Emit(ir.Instr{Op: ir.OPStoreLocal, A: int64(vi.slot)})
+	// Initialize locals: an explicit initializer (var x := expr / let x = expr),
+	// otherwise a zero value for those whose zero is not integer 0.
+	for _, li := range localInits {
+		switch {
+		case li.init != nil:
+			g.compileExpr(li.init)
+			fn.Emit(ir.Instr{Op: ir.OPStoreLocal, A: int64(li.vi.slot)})
+		case needsInit(li.vi.ti):
+			g.pushZero(li.vi.ti)
+			fn.Emit(ir.Instr{Op: ir.OPStoreLocal, A: int64(li.vi.slot)})
 		}
 	}
 
@@ -586,6 +637,10 @@ func (g *gen) assignToVar(name string, genVal func(), at ast.Node) {
 			return
 		}
 		g.errf("unknown identifier %q", name)
+		return
+	}
+	if vi.immutable {
+		g.errf("cannot assign to immutable binding %q", name)
 		return
 	}
 	switch vi.kind {

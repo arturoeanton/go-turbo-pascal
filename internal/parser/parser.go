@@ -18,10 +18,26 @@ import (
 )
 
 type Parser struct {
-	tokens []lexer.Token
-	pos    int
-	errs   []string
-	file   string
+	tokens   []lexer.Token
+	pos      int
+	errs     []string
+	file     string
+	modeBPGo bool // modern (BPGo) extensions enabled via {$MODE BPGO}
+}
+
+// SetModern enables the modern (BPGo) language extensions. Callers pass the
+// lexer's ModeBPGo() so contextual keywords (let, match, ...) activate only
+// under {$MODE BPGO}.
+func (p *Parser) SetModern(on bool) { p.modeBPGo = on }
+
+// isModern reports whether the modern extensions are enabled.
+func (p *Parser) isModern() bool { return p.modeBPGo }
+
+// isContextualKw reports whether the current token is the identifier `word`
+// acting as a contextual keyword: it only counts under {$MODE BPGO}, so outside
+// that mode the word stays a plain identifier (full TP7 compatibility).
+func (p *Parser) isContextualKw(word string) bool {
+	return p.modeBPGo && p.cur().Kind == lexer.TokIdent && p.cur().Lower == word
 }
 
 func New(toks []lexer.Token) *Parser {
@@ -320,6 +336,16 @@ func (p *Parser) parseBlock(isProgram bool) *ast.Block {
 	blk := &ast.Block{Base: ast.Base{P: start}}
 	for {
 		t := p.cur()
+		// {$MODE BPGO}: `let` is a contextual keyword introducing an immutable
+		// declaration alongside const/type/var. Outside modern mode it stays a
+		// plain identifier and ends the declaration section as usual.
+		if p.isContextualKw("let") {
+			if d := p.parseLetDecl(); d != nil {
+				blk.Vars = append(blk.Vars, d)
+			}
+			p.match(lexer.TokSemicolon)
+			continue
+		}
 		if t.Kind != lexer.TokKeyword {
 			return blk
 		}
@@ -467,14 +493,38 @@ func (p *Parser) parseVarDecl() ast.Decl {
 			break
 		}
 	}
+	// {$MODE BPGO}: `var x := expr` infers the type from the initializer.
+	if p.isModern() && p.check(lexer.TokAssign) {
+		p.advance() // :=
+		return &ast.VarDecl{Base: ast.Base{P: start}, Names: names, Init: p.parseExpr()}
+	}
 	p.expect(lexer.TokColon)
 	t := p.parseType()
 	var abs ast.Expr
+	var init ast.Expr
 	if p.cur().Kind == lexer.TokKeyword && p.cur().Lower == "absolute" {
 		p.advance()
 		abs = p.parsePrimary()
+	} else if p.isModern() && p.match(lexer.TokEqual) {
+		init = p.parseExpr() // var x: T = expr
 	}
-	return &ast.VarDecl{Base: ast.Base{P: start}, Names: names, Type: t, Abs: abs}
+	return &ast.VarDecl{Base: ast.Base{P: start}, Names: names, Type: t, Abs: abs, Init: init}
+}
+
+// parseLetDecl parses a modern immutable binding: `let x [: T] = expr` or
+// `let x [: T] := expr`. It is a declaration-section entry ({$MODE BPGO}).
+func (p *Parser) parseLetDecl() ast.Decl {
+	start := p.curPos()
+	p.advance() // 'let'
+	name := p.expect(lexer.TokIdent).Text
+	var typ ast.TypeExpr
+	if p.match(lexer.TokColon) {
+		typ = p.parseType()
+	}
+	if !p.match(lexer.TokAssign) { // accept '=' or ':='
+		p.match(lexer.TokEqual)
+	}
+	return &ast.VarDecl{Base: ast.Base{P: start}, Names: []string{name}, Type: typ, Init: p.parseExpr(), Immutable: true}
 }
 
 func (p *Parser) parseType() ast.TypeExpr {

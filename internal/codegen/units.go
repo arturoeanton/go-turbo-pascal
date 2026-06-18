@@ -64,6 +64,7 @@ func (g *gen) loadUnit(name string) {
 		return
 	}
 	p := parser.New(l.Tokens())
+	p.SetModern(l.ModeBPGo())
 	p.SetFile(path)
 	node := p.ParseUnit()
 	if errs := p.Errors(); len(errs) > 0 {

@@ -163,3 +163,18 @@ func TestNumberVsRange(t *testing.T) {
 		t.Errorf("0.5 should be real, got %v", toks[4].Kind)
 	}
 }
+
+func TestModeBPGoDirective(t *testing.T) {
+	if lexer := New(`{$MODE BPGO}` + "\n" + `program P; begin end.`); !lexer.ModeBPGo() {
+		t.Fatal("expected {$MODE BPGO} to enable modern mode")
+	}
+	if lexer := New(`{$mode bpgo}` + "\n" + `program P; begin end.`); !lexer.ModeBPGo() {
+		t.Fatal("mode directive should be case-insensitive")
+	}
+	if lexer := New(`program P; begin end.`); lexer.ModeBPGo() {
+		t.Fatal("modern mode must be off without the directive (strict TP7)")
+	}
+	if lexer := New(`{$MODE DELPHI}` + "\n" + `program P; begin end.`); lexer.ModeBPGo() {
+		t.Fatal("only MODE BPGO enables modern mode")
+	}
+}

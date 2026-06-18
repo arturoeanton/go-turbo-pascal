@@ -34,6 +34,7 @@ type Symbol struct {
 func Symbols(src string) []Symbol {
 	l := lexer.New(src)
 	p := parser.New(l.Tokens())
+	p.SetModern(l.ModeBPGo())
 	p.SetFile("document.pas")
 	node := p.ParseUnit()
 

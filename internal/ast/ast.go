@@ -515,10 +515,11 @@ func (t TypeDecl) String() string {
 
 type VarDecl struct {
 	Base
-	Names []string
-	Type  TypeExpr
-	Abs   Expr
-	Init  Expr
+	Names     []string
+	Type      TypeExpr // nil = infer from Init ({$MODE BPGO}: var x := expr)
+	Abs       Expr
+	Init      Expr
+	Immutable bool // `let` binding: reassignment is a compile error
 }
 
 func (VarDecl) declNode() {}

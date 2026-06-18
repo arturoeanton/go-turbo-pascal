@@ -203,7 +203,12 @@ type Lexer struct {
 	curLine  int
 	curCol   int
 	inString bool
+	modeBPGo bool // {$MODE BPGO}: enable modern (BPGo) language extensions
 }
+
+// ModeBPGo reports whether a {$MODE BPGO} directive enabled the modern language
+// extensions. Without it the source is treated as strict TP7.
+func (l *Lexer) ModeBPGo() bool { return l.modeBPGo }
 
 func New(src string) *Lexer {
 	l := &Lexer{src: []byte(src), line: 1, col: 1}
@@ -395,12 +400,21 @@ func (l *Lexer) scanDirective() {
 	for l.pos < len(l.src) {
 		if l.src[l.pos] == '}' {
 			l.advance()
-			_ = string(l.src[start:l.pos])
+			l.applyDirective(extractDirectiveBody(string(l.src[start:l.pos])))
 			return
 		}
 		l.advance()
 	}
 	l.errf("unterminated {{$...}} directive")
+}
+
+// applyDirective acts on directives the lexer tracks itself. Currently only the
+// mode switch: {$MODE BPGO} (case-insensitive) turns on the modern extensions.
+func (l *Lexer) applyDirective(body string) {
+	fields := strings.Fields(strings.ToUpper(body))
+	if len(fields) >= 2 && fields[0] == "MODE" && fields[1] == "BPGO" {
+		l.modeBPGo = true
+	}
 }
 
 func extractDirectiveBody(s string) string {

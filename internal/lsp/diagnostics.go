@@ -37,6 +37,7 @@ func Analyze(src string) []Diagnostic {
 	}
 
 	p := parser.New(l.Tokens())
+	p.SetModern(l.ModeBPGo())
 	p.SetFile("document.pas")
 	p.ParseUnit()
 	if errs := p.Errors(); len(errs) > 0 {
