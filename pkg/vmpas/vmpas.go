@@ -55,6 +55,13 @@ type Capabilities struct {
 	// network, exec, env, database) in execution order; retrieve it with
 	// Engine.AuditLog after a run.
 	Audit bool
+	// LiveBindings keeps bound Go variables (Var) in sync with the script around
+	// every call into a bound Go function/procedure: the script's current values
+	// are written back to Go before the call and the host's mutations are made
+	// visible to the script after it. Off by default (values sync only at the
+	// start and end of a run). Adds per-call overhead proportional to the number
+	// of bound variables.
+	LiveBindings bool
 }
 
 // Sandboxed returns a safe, bounded capability set suitable for running
@@ -108,6 +115,7 @@ type Engine struct {
 	httpHeaders map[string]string // headers applied to subsequent HTTP requests
 	suspendTag  string            // tag from the last Suspend call (durable runs)
 	audit       []AuditEntry      // capability-gated calls recorded this run (Audit cap)
+	hostErr     string            // message of the last host error raised as an exception
 }
 
 // UseDB binds a database handle for the Db* host builtins. The handle is the
@@ -291,12 +299,17 @@ func (e *Engine) execLocked(prog *ir.Program) error {
 	// engine is reused for successive tenant requests).
 	e.cursor, e.dbErr, e.httpStatus, e.httpHeaders = nil, "", 0, nil
 	e.audit = nil
+	e.hostErr = ""
 	e.seedVars(vm)
 
 	vm.Run()
 
 	e.output = vm.Output.String()
 	if vm.RuntimeError != 0 {
+		if e.hostErr != "" {
+			// A bound Go function returned an error that propagated uncaught.
+			return fmt.Errorf("vmpas: %s", e.hostErr)
+		}
 		return fmt.Errorf("vmpas: runtime error %d", vm.RuntimeError)
 	}
 	e.readbackVars(vm)
@@ -412,14 +425,15 @@ func (e *Engine) declarations() (string, string, error) {
 			fmt.Fprintf(&types, "  %s = record\n", recName)
 			for i := 0; i < t.NumField(); i++ {
 				f := t.Field(i)
-				if f.PkgPath != "" {
+				name, skip := pascalFieldName(f)
+				if skip {
 					continue
 				}
 				pt, ok := pascalScalarType(f.Type)
 				if !ok {
 					continue
 				}
-				fmt.Fprintf(&types, "    %s: %s;\n", f.Name, pt)
+				fmt.Fprintf(&types, "    %s: %s;\n", name, pt)
 			}
 			types.WriteString("  end;\n")
 			fmt.Fprintf(&vars, "  %s: %s;\n", n, recName)
@@ -503,10 +517,10 @@ func (e *Engine) registerRuntime(vm *ir.VM) {
 		return ir.Value{Kind: ir.VKNil}
 	}
 	for n, fn := range e.funcs {
-		vm.Builtins[n] = makeBuiltin(fn)
+		vm.Builtins[n] = e.makeBuiltin(fn)
 	}
 	for n, fn := range e.procs {
-		vm.Builtins[n] = makeBuiltin(fn)
+		vm.Builtins[n] = e.makeBuiltin(fn)
 	}
 	// Wrap gated builtins for the audit log (before aliasLowercase mirrors them,
 	// so the lowercase aliases codegen calls point at the wrapped functions).
@@ -532,15 +546,33 @@ func (e *Engine) readbackVars(vm *ir.VM) {
 	}
 }
 
+// errorInterface is the reflect.Type of the built-in error interface.
+var errorInterface = reflect.TypeOf((*error)(nil)).Elem()
+
 // makeBuiltin adapts a Go function into a VM builtin.
-func makeBuiltin(fn reflect.Value) ir.Builtin {
+//
+//   - If the function's last result is an error, a non-nil error is surfaced as a
+//     Pascal exception (catchable with try/except); the value result, if any, is
+//     ignored on the error path.
+//   - When Capabilities.LiveBindings is set, bound Go variables are synced with
+//     the VM around the call (Pascal state in before the call, host mutations out
+//     after it), so callbacks see and can modify live binding state.
+func (e *Engine) makeBuiltin(fn reflect.Value) ir.Builtin {
 	t := fn.Type()
 	// Number of fixed parameters (variadic tail is not bridged).
 	n := t.NumIn()
 	if t.IsVariadic() {
 		n--
 	}
+	// Detect a trailing error result.
+	errIdx := -1
+	if no := t.NumOut(); no > 0 && t.Out(no-1) == errorInterface {
+		errIdx = no - 1
+	}
 	return func(vm *ir.VM, args []ir.Value) ir.Value {
+		if e.caps.LiveBindings {
+			e.readbackVars(vm) // Pascal -> Go: callback sees current values
+		}
 		in := make([]reflect.Value, n)
 		for i := 0; i < n; i++ {
 			if i < len(args) {
@@ -550,7 +582,16 @@ func makeBuiltin(fn reflect.Value) ir.Builtin {
 			}
 		}
 		out := fn.Call(in)
-		if len(out) == 0 {
+		if e.caps.LiveBindings {
+			e.seedVars(vm) // Go -> Pascal: host mutations are visible (in-place)
+		}
+		if errIdx >= 0 && !out[errIdx].IsNil() {
+			msg := out[errIdx].Interface().(error).Error()
+			e.hostErr = msg
+			vm.RaiseValue(ir.Value{Kind: ir.VKStr, Str: msg})
+			return ir.Value{Kind: ir.VKNil}
+		}
+		if len(out) == 0 || errIdx == 0 {
 			return ir.Value{Kind: ir.VKNil}
 		}
 		return goToIR(out[0])
@@ -560,6 +601,9 @@ func makeBuiltin(fn reflect.Value) ir.Builtin {
 // --- Go <-> IR value conversion ---
 
 func goToIR(v reflect.Value) ir.Value {
+	if v.Kind() == reflect.Ptr && v.IsNil() {
+		return ir.Value{Kind: ir.VKNil} // nil Go pointer -> Pascal nil
+	}
 	v = derefValue(v)
 	switch v.Kind() {
 	case reflect.Bool:
@@ -576,12 +620,12 @@ func goToIR(v reflect.Value) ir.Value {
 		rec := map[string]*ir.Value{}
 		t := v.Type()
 		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if f.PkgPath != "" {
+			name, skip := pascalFieldName(t.Field(i))
+			if skip {
 				continue
 			}
 			fv := goToIR(v.Field(i))
-			rec[strings.ToLower(f.Name)] = &fv
+			rec[strings.ToLower(name)] = &fv
 		}
 		return ir.Value{Kind: ir.VKRecord, Rec: rec}
 	case reflect.Slice, reflect.Array:
@@ -608,6 +652,17 @@ func irToGo(val ir.Value, dst reflect.Value) {
 		return
 	}
 	switch dst.Kind() {
+	case reflect.Ptr:
+		// nil IR value clears the Go pointer; otherwise allocate (if needed) and
+		// write through, so nested *Struct fields and pointer args/returns round-trip.
+		if val.Kind == ir.VKNil || (val.Kind == ir.VKPtr && val.Cell == nil) {
+			dst.Set(reflect.Zero(dst.Type()))
+			return
+		}
+		if dst.IsNil() {
+			dst.Set(reflect.New(dst.Type().Elem()))
+		}
+		irToGo(val, dst.Elem())
 	case reflect.Bool:
 		dst.SetBool(irBool(val))
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -624,11 +679,11 @@ func irToGo(val ir.Value, dst reflect.Value) {
 		}
 		t := dst.Type()
 		for i := 0; i < t.NumField(); i++ {
-			f := t.Field(i)
-			if f.PkgPath != "" {
+			name, skip := pascalFieldName(t.Field(i))
+			if skip {
 				continue
 			}
-			if cell, ok := val.Rec[strings.ToLower(f.Name)]; ok && cell != nil {
+			if cell, ok := val.Rec[strings.ToLower(name)]; ok && cell != nil {
 				irToGo(*cell, dst.Field(i))
 			}
 		}
@@ -715,6 +770,32 @@ func derefType(t reflect.Type) reflect.Type {
 		t = t.Elem()
 	}
 	return t
+}
+
+// pascalFieldName returns the Pascal record-field name for a Go struct field,
+// honoring a `vmpas:"name"` (preferred) or `json:"name"` tag. It reports skip
+// when the field is unexported or tagged "-".
+func pascalFieldName(f reflect.StructField) (name string, skip bool) {
+	if f.PkgPath != "" { // unexported field
+		return "", true
+	}
+	tag := f.Tag.Get("vmpas")
+	if tag == "" {
+		tag = f.Tag.Get("json")
+	}
+	if tag != "" {
+		n := tag
+		if i := strings.IndexByte(n, ','); i >= 0 { // drop ",omitempty" and friends
+			n = n[:i]
+		}
+		if n == "-" {
+			return "", true
+		}
+		if n != "" {
+			return n, false
+		}
+	}
+	return f.Name, false
 }
 
 // pascalScalarType maps a Go scalar type to a Pascal type name.

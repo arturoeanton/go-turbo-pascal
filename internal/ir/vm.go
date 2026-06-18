@@ -290,6 +290,16 @@ func (vm *VM) doUnwind() {
 	}
 }
 
+// RaiseValue lets a host builtin raise a Pascal exception carrying v. The
+// interpreter unwinds to the nearest try/except handler after the builtin
+// returns (see OPCallBuiltin); if none is active the run halts with an
+// unhandled-exception runtime error (217). Builtins must return immediately
+// after calling this; their return value is discarded.
+func (vm *VM) RaiseValue(v Value) {
+	vm.excValue = v
+	vm.excActive = true
+}
+
 // getFrame returns a frame for fn, reusing one from the pool when possible.
 func (vm *VM) getFrame(fn *Function, caller *Frame) *Frame {
 	n := len(fn.Params) + len(fn.Locals)
@@ -884,6 +894,12 @@ func (vm *VM) Step(frame *Frame) bool {
 			return false
 		}
 		r := fn(vm, args)
+		if vm.excActive {
+			// The builtin raised a Pascal exception (e.g. a bound Go function
+			// returned a non-nil error). Discard its return and unwind.
+			vm.doUnwind()
+			return !vm.Halted
+		}
 		vm.Stack = append(vm.Stack, r)
 		if vm.Suspended {
 			// A host builtin requested suspension. The return value is on the
