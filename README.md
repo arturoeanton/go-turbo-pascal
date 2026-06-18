@@ -119,17 +119,17 @@ internal/         the implementation
 
 ## Test layers
 
-BPGo ships four test layers to ensure stability and completeness:
+BPGo ships four test layers to ensure stability:
 
-- **Unit tests** under each `internal/...` package. They cover every
-  exported function, type and constant.
+- **Unit tests** under each `internal/...` package, covering the
+  language and runtime features each package implements.
 - **End-to-end tests** in `internal/e2e`. They exercise the full
-  pipeline (lex -> parse -> sem -> IR -> VM) on every file in
-  `testdata/pas`, run the CLI driver, build every binary and verify
+  pipeline (lex -> parse -> sem -> IR -> VM) on the programs in
+  `testdata/pas`, run the CLI driver, build the binaries and verify
   the binary's `--help` and `-V` output.
-- **Integration tests** in `internal/integration`. They run every
-  System unit builtin and every representative member of every
-  standard unit through the full pipeline.
+- **Integration tests** in `internal/integration`. They run System
+  unit builtins and representative members of the standard units
+  through the full pipeline.
 - **Conformance tests** in `internal/conformance`. They produce
   `compat/report.json` with a per-test, per-unit, per-directive and
   per-diagnostic report.
