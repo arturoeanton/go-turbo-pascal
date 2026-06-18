@@ -55,7 +55,13 @@ const (
 	VKFunc
 	// VKChan is a channel: Ref holds *Channel.
 	VKChan
+	// VKCurrency is exact fixed-point money: Int holds the value scaled by
+	// CurrencyScale (10000), i.e. 4 fixed decimal places (Delphi Currency).
+	VKCurrency
 )
+
+// CurrencyScale is the fixed-point factor for VKCurrency (4 decimal places).
+const CurrencyScale = 10000
 
 func (v Value) String() string {
 	switch v.Kind {
@@ -132,6 +138,8 @@ func (v Value) String() string {
 		return "func(" + v.Str + ")"
 	case VKChan:
 		return "channel"
+	case VKCurrency:
+		return formatCurrency(v.Int)
 	}
 	return "?"
 }
@@ -596,6 +604,9 @@ func (vm *VM) Step(frame *Frame) bool {
 		} else {
 			vm.Stack = append(vm.Stack, Value{Kind: VKNil})
 		}
+		return true
+	case OPToCurrency:
+		vm.Stack = append(vm.Stack, toCurrency(vm.pop()))
 		return true
 	case OPMakeChan:
 		c := &Channel{}
@@ -1153,6 +1164,8 @@ func zeroValueForType(typ string) Value {
 		return Value{Kind: VKChar}
 	case "boolean":
 		return Value{Kind: VKBool}
+	case "currency":
+		return Value{Kind: VKCurrency}
 	case "pointer":
 		return Value{Kind: VKPtr}
 	}
@@ -1440,7 +1453,86 @@ func toReal(v Value) float64 {
 	return 0
 }
 
+// currencyScaled returns v as a scaled fixed-point integer (value * 10000).
+func currencyScaled(v Value) int64 {
+	switch v.Kind {
+	case VKCurrency:
+		return v.Int
+	case VKInt:
+		return v.Int * CurrencyScale
+	case VKReal:
+		return int64(math.Round(v.Real * CurrencyScale))
+	}
+	return 0
+}
+
+// toCurrency converts any numeric value to a Currency value.
+func toCurrency(v Value) Value {
+	if v.Kind == VKCurrency {
+		return v
+	}
+	return Value{Kind: VKCurrency, Int: currencyScaled(v)}
+}
+
+// currencyOp evaluates an arithmetic operator where at least one operand is a
+// Currency, preserving exact fixed-point semantics.
+func currencyOp(op string, a, b Value) Value {
+	switch op {
+	case "+":
+		return Value{Kind: VKCurrency, Int: currencyScaled(a) + currencyScaled(b)}
+	case "-":
+		return Value{Kind: VKCurrency, Int: currencyScaled(a) - currencyScaled(b)}
+	case "*":
+		// money*money rescales; money*quantity multiplies by the plain factor.
+		if a.Kind == VKCurrency && b.Kind == VKCurrency {
+			return Value{Kind: VKCurrency, Int: (a.Int * b.Int) / CurrencyScale}
+		}
+		if a.Kind == VKCurrency {
+			return Value{Kind: VKCurrency, Int: int64(math.Round(float64(a.Int) * toReal(b)))}
+		}
+		return Value{Kind: VKCurrency, Int: int64(math.Round(toReal(a) * float64(b.Int)))}
+	case "/":
+		// money/money is a dimensionless ratio (real); money/number is money.
+		if a.Kind == VKCurrency && b.Kind == VKCurrency {
+			if b.Int == 0 {
+				return Value{Kind: VKReal}
+			}
+			return Value{Kind: VKReal, Real: float64(a.Int) / float64(b.Int)}
+		}
+		d := toReal(b)
+		if d == 0 {
+			return Value{Kind: VKCurrency}
+		}
+		return Value{Kind: VKCurrency, Int: int64(math.Round(float64(currencyScaled(a)) / d))}
+	}
+	return Value{Kind: VKCurrency}
+}
+
+// formatCurrency renders a scaled money value with 2 decimals, half-up.
+func formatCurrency(scaled int64) string {
+	neg := scaled < 0
+	if neg {
+		scaled = -scaled
+	}
+	units := scaled / CurrencyScale
+	cents := (scaled%CurrencyScale + 50) / 100 // 4-decimal -> 2-decimal, half-up
+	if cents >= 100 {
+		units++
+		cents -= 100
+	}
+	sign := ""
+	if neg {
+		sign = "-"
+	}
+	return fmt.Sprintf("%s%d.%02d", sign, units, cents)
+}
+
 func binaryOp(op string, a, b Value) Value {
+	// Money arithmetic (exact fixed-point) takes precedence over the generic
+	// numeric paths, including '/'.
+	if a.Kind == VKCurrency || b.Kind == VKCurrency {
+		return currencyOp(op, a, b)
+	}
 	// In TP7 the '/' operator is always real division (use 'div' for integer
 	// division), regardless of operand types.
 	if op == "/" {
@@ -1525,6 +1617,26 @@ func binaryOp(op string, a, b Value) Value {
 }
 
 func compareOp(op string, a, b Value) Value {
+	// Money comparison: compare the exact scaled integers.
+	if a.Kind == VKCurrency || b.Kind == VKCurrency {
+		x, y := currencyScaled(a), currencyScaled(b)
+		var r bool
+		switch op {
+		case "=":
+			r = x == y
+		case "<>":
+			r = x != y
+		case "<":
+			r = x < y
+		case "<=":
+			r = x <= y
+		case ">":
+			r = x > y
+		case ">=":
+			r = x >= y
+		}
+		return Value{Kind: VKBool, Bool: r}
+	}
 	// Pointer / nil comparison: only = and <> are defined.
 	if a.Kind == VKPtr || b.Kind == VKPtr || a.Kind == VKNil || b.Kind == VKNil {
 		an := a.Kind == VKNil || (a.Kind == VKPtr && a.Cell == nil)

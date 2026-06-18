@@ -183,6 +183,8 @@ func (g *gen) resolveType(t ast.TypeExpr) *typeInfo {
 			return &typeInfo{kind: ktScalar, scalar: tChar}
 		case "boolean", "bytebool", "wordbool", "longbool":
 			return &typeInfo{kind: ktScalar, scalar: tBool}
+		case "currency":
+			return &typeInfo{kind: ktScalar, scalar: tCurrency}
 		case "channel":
 			return &typeInfo{kind: ktChan}
 		case "text", "file":
@@ -372,6 +374,8 @@ func (g *gen) zeroTemplate(ti *typeInfo) ir.Value {
 			return ir.Value{Kind: ir.VKChar}
 		case tBool:
 			return ir.Value{Kind: ir.VKBool}
+		case tCurrency:
+			return ir.Value{Kind: ir.VKCurrency}
 		}
 		return ir.Value{Kind: ir.VKInt}
 	case ktPointer:

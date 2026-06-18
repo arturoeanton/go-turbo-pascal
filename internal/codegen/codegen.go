@@ -33,6 +33,7 @@ const (
 	tStr
 	tChar
 	tBool
+	tCurrency
 )
 
 // varKind classifies how a name is stored.
@@ -348,7 +349,7 @@ func (g *gen) declareGlobals(decls []ast.Decl) {
 			switch {
 			case vd.Init != nil:
 				// var x := expr / var x: T = expr / let x = expr
-				g.compileExpr(vd.Init)
+				g.compileValueFor(ti, vd.Init)
 				g.fn.Emit(ir.Instr{Op: ir.OPStoreGlobal, S: name})
 			case needsInit(ti) && !g.presets[strings.ToLower(name)]:
 				// Aggregates and non-int scalars need an explicit zero value,
@@ -517,7 +518,7 @@ func (g *gen) compileRoutine(pd *ast.ProcDecl, fnName string, selfType *typeInfo
 	for _, li := range localInits {
 		switch {
 		case li.init != nil:
-			g.compileExpr(li.init)
+			g.compileValueFor(li.vi.ti, li.init)
 			fn.Emit(ir.Instr{Op: ir.OPStoreLocal, A: int64(li.vi.slot)})
 		case needsInit(li.vi.ti):
 			g.pushZero(li.vi.ti)
@@ -640,9 +641,20 @@ func (g *gen) curLoop() *loopCtx {
 	return g.loops[len(g.loops)-1]
 }
 
+// compileValueFor compiles expr, coercing it to the target type when needed.
+// Currently the only implicit coercion is scaling a numeric value to Currency,
+// so `c := 19.99` stores exact money.
+func (g *gen) compileValueFor(target *typeInfo, expr ast.Expr) {
+	g.compileExpr(expr)
+	if target != nil && target.kind == ktScalar && target.scalar == tCurrency {
+		g.fn.Emit(ir.Instr{Op: ir.OPToCurrency})
+	}
+}
+
 func (g *gen) compileAssign(a *ast.AssignStmt) {
 	if id, ok := a.Dest.(*ast.Ident); ok {
-		g.assignToVar(id.Name, func() { g.compileExpr(a.Expr) }, id)
+		target := g.typeOf(a.Dest)
+		g.assignToVar(id.Name, func() { g.compileValueFor(target, a.Expr) }, id)
 		return
 	}
 	// obj.Prop := v resolves through the property's `write` specifier: a setter
@@ -654,7 +666,7 @@ func (g *gen) compileAssign(a *ast.AssignStmt) {
 					g.compileMethodCall(fe.Expr, pr.write, []ast.Expr{a.Expr}, true)
 				} else {
 					g.compileFieldAddr(fe.Expr, pr.write)
-					g.compileExpr(a.Expr)
+					g.compileValueFor(g.typeOf(fe), a.Expr)
 					g.fn.Emit(ir.Instr{Op: ir.OPStoreRef})
 				}
 				return
@@ -674,7 +686,7 @@ func (g *gen) compileAssign(a *ast.AssignStmt) {
 	// Field / array element / pointer target: compute the lvalue reference,
 	// then store the value through it.
 	g.compileAddr(a.Dest)
-	g.compileExpr(a.Expr)
+	g.compileValueFor(g.typeOf(a.Dest), a.Expr)
 	g.fn.Emit(ir.Instr{Op: ir.OPStoreRef})
 }
 
@@ -917,6 +929,16 @@ func (g *gen) compileCall(c *ast.CallExpr, asStmt bool) {
 		return
 	}
 	name := strings.ToLower(id.Name)
+
+	// ToCurrency(x): exact fixed-point money conversion (standard, not gated).
+	if name == "tocurrency" && g.funcs[name] == nil && g.lookup(id.Name) == nil && len(c.Args) == 1 {
+		g.compileExpr(c.Args[0])
+		g.fn.Emit(ir.Instr{Op: ir.OPToCurrency})
+		if asStmt {
+			g.fn.Emit(ir.Instr{Op: ir.OPPop})
+		}
+		return
+	}
 
 	// Built-in assertions for integrated tests (unless shadowed by a user
 	// routine of the same name). They raise on failure; a `test` block catches.
@@ -1746,6 +1768,8 @@ func typeTag(t vtype) string {
 		return "char"
 	case tBool:
 		return "boolean"
+	case tCurrency:
+		return "currency"
 	}
 	return "integer"
 }

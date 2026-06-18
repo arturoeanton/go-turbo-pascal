@@ -101,7 +101,8 @@ const (
 	OPMakeChan  // pop buffer size (A=1) or none (A=0), push a new channel
 	OPChanSend  // pop value, pop channel; send (may park the fiber)
 	OPChanRecv  // pop channel; push received value (may park the fiber)
-	OPChanClose // pop channel; close it
+	OPChanClose  // pop channel; close it
+	OPToCurrency // pop a numeric value, push its Currency (fixed-point) form
 )
 
 func (o Op) String() string {
