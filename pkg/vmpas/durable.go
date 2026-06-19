@@ -76,6 +76,7 @@ func (e *Engine) runDurableLocked(prog *ir.Program, st *State) (*State, error) {
 	vm.Builtins = e.prepareBuiltins()
 	e.cursor, e.dbErr, e.httpStatus, e.httpHeaders = nil, "", 0, nil
 	e.suspendTag = ""
+	e.lastGlobals = nil
 	if st == nil {
 		e.audit = nil // fresh run; a resume keeps accumulating across segments
 	}
@@ -105,6 +106,7 @@ func (e *Engine) runDurableLocked(prog *ir.Program, st *State) (*State, error) {
 	if vm.RuntimeError != 0 {
 		return nil, newRuntimeError(vm.RuntimeError)
 	}
+	e.lastGlobals = vm.Globals // completed: allow Get to read results
 	return nil, nil
 }
 

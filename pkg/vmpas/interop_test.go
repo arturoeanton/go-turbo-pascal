@@ -228,6 +228,19 @@ func TestRuntimeErrorTyped(t *testing.T) {
 	}
 }
 
+func TestGetAfterDurable(t *testing.T) {
+	// Get also works after a durable run that completed.
+	e := NewWith(Capabilities{Deterministic: true})
+	st, err := e.RunDurable(`program P; var outcome: string; begin outcome := 'ok' end.`)
+	if err != nil || st != nil {
+		t.Fatalf("durable run: st=%v err=%v", st, err)
+	}
+	var s string
+	if err := e.Get("outcome", &s); err != nil || s != "ok" {
+		t.Fatalf("Get after durable: s=%q err=%v", s, err)
+	}
+}
+
 // --- output cap on a single oversized write (B1) ---
 
 func TestMaxOutputSingleWrite(t *testing.T) {

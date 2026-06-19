@@ -61,6 +61,23 @@ An expense-approval rule runs until it needs a human decision: it pauses with
 answer and resumes on a fresh engine (`ResumeDurable`), continuing exactly where
 it left off. See [`../docs/en/durable.md`](../docs/en/durable.md).
 
+## Visual durable workflow builder — RAD (`examples/rad/`)
+
+```bash
+cd examples/rad && go run .      # then open http://localhost:8080
+```
+
+A small web app: drag boxes onto a canvas to compose a flow, where each box shows
+the Pascal it generates (and a "Custom Pascal" box you edit with a Pascal-aware
+editor, CodeMirror). "Run" compiles the flow and executes it on the engine; an
+"Approval" box calls `Suspend`, so the run pauses (durable execution), the UI
+offers Approve / Reject, and it resumes in a fresh engine. Each executed box
+lights up live via a bound `Trace()` callback, and saved flows, run history and
+paused states persist in **SQLite**.
+
+It is its **own Go module** (with a pure-Go SQLite driver) so that dependency
+never enters the engine's dependency-free import tree.
+
 See also [`../docs/en/getting-started.md`](../docs/en/getting-started.md) and the
 embedding guide in [`../docs/en/vmpas.md`](../docs/en/vmpas.md). The full API
 reference, with runnable examples, is on
