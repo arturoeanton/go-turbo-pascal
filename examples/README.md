@@ -78,6 +78,8 @@ paused states persist in **SQLite**.
 It is its **own Go module** (with a pure-Go SQLite driver) so that dependency
 never enters the engine's dependency-free import tree.
 
+Full write-up: [`rad/README.md`](rad/README.md) · [español](rad/README.es.md).
+
 See also [`../docs/en/getting-started.md`](../docs/en/getting-started.md) and the
 embedding guide in [`../docs/en/vmpas.md`](../docs/en/vmpas.md). The full API
 reference, with runnable examples, is on
