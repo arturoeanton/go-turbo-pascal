@@ -38,6 +38,48 @@ func TestStackUnderflowGuards(t *testing.T) {
 	}
 }
 
+// T2: money formatting — half-up rounding, carry, and negative values.
+func TestFormatCurrency(t *testing.T) {
+	cases := []struct {
+		scaled int64 // value * CurrencyScale (4 decimals)
+		want   string
+	}{
+		{50000, "5.00"},
+		{-50000, "-5.00"},
+		{12345, "1.23"},   // .2345 -> 23.45c -> 23 (half-up at the cent)
+		{12350, "1.24"},   // .2350 -> 23.50c -> 24 (half-up)
+		{-12350, "-1.24"}, // negative rounds by magnitude
+		{19999, "2.00"},   // cents carry into units
+		{0, "0.00"},
+		{-1, "0.00"}, // -0.0001 rounds to 0.00 (no "-0.00")
+	}
+	for _, c := range cases {
+		if got := formatCurrency(c.scaled); got != c.want {
+			t.Errorf("formatCurrency(%d) = %q, want %q", c.scaled, got, c.want)
+		}
+	}
+}
+
+// T3: record field insert/overwrite/lookup via the association-slice helpers.
+func TestRecordFieldHelpers(t *testing.T) {
+	v := Value{Kind: VKRecord}
+	c := v.PutField("x", &Value{Kind: VKInt, Int: 7})
+	if v.Field("x") != c || v.Field("x").Int != 7 {
+		t.Fatal("PutField/Field did not round-trip the cell")
+	}
+	v.PutField("x", &Value{Kind: VKInt, Int: 9}) // overwrite, must not append
+	if v.Field("x").Int != 9 || len(v.Rec) != 1 {
+		t.Fatalf("overwrite: Int=%d len=%d", v.Field("x").Int, len(v.Rec))
+	}
+	v.PutField("y", &Value{Kind: VKInt, Int: 1}) // new field appends
+	if len(v.Rec) != 2 {
+		t.Fatalf("append: len=%d, want 2", len(v.Rec))
+	}
+	if v.Field("missing") != nil {
+		t.Fatal("Field on an absent name should be nil")
+	}
+}
+
 // B3: dereferencing a pointer whose heap index is out of range must be a clean
 // runtime error, not an out-of-range panic.
 func TestDerefHeapBounds(t *testing.T) {

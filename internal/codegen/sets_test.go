@@ -2,6 +2,20 @@ package codegen
 
 import "testing"
 
+// T4: a record value-copy must not alias a set field — modifying the copy's set
+// leaves the original unchanged (regression guard for deepCopy + set ops).
+func TestSetInRecordCopyIsolation(t *testing.T) {
+	check(t, `program P;
+type R = record s: set of 1..10; end;
+var a, b: R;
+begin
+  a.s := [1, 2, 3];
+  b := a;
+  b.s := b.s + [4];
+  if 4 in a.s then WriteLn('LEAK') else WriteLn('ok');
+end.`, "ok\n")
+}
+
 func TestSetOperators(t *testing.T) {
 	check(t, `program S;
 var a, b, c: set of 0..15;
