@@ -38,6 +38,16 @@ func TestStackUnderflowGuards(t *testing.T) {
 	}
 }
 
+// B6: OPMk* with a malformed negative count must not panic the host.
+func TestMkNegativeCountGuard(t *testing.T) {
+	for _, op := range []Op{OPMkString, OPMkArray, OPMkSet} {
+		vm := runMain([]Instr{{Op: op, A: -1}, {Op: OPHalt}}) // must not panic
+		if vm.RuntimeError != 0 {
+			t.Fatalf("op %v with negative count: unexpected runtime error %d", op, vm.RuntimeError)
+		}
+	}
+}
+
 // T2: money formatting — half-up rounding, carry, and negative values.
 func TestFormatCurrency(t *testing.T) {
 	cases := []struct {

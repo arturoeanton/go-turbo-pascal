@@ -446,6 +446,11 @@ func RestoreVM(prog *Program, data []byte) (*VM, error) {
 		if !ok {
 			return nil, fmt.Errorf("ir: snapshot references unknown function %q", s.Frames[i].FuncName)
 		}
+		// Validate the resume PC against the function's code so a corrupt snapshot
+		// is a clean error here rather than an out-of-range access at run time.
+		if pc := s.Frames[i].PC; pc < 0 || pc > len(fn.Code) {
+			return nil, fmt.Errorf("ir: snapshot frame %d has out-of-range PC %d (func %q has %d instructions)", i, pc, s.Frames[i].FuncName, len(fn.Code))
+		}
 		frames[i] = &Frame{Func: fn, PC: s.Frames[i].PC, Locals: make([]Value, len(s.Frames[i].Locals))}
 	}
 	for i, fsnap := range s.Frames {
@@ -454,10 +459,10 @@ func RestoreVM(prog *Program, data []byte) (*VM, error) {
 			dec.rebuild(fsnap.Locals[j], &f.Locals[j])
 		}
 		dec.rebuild(fsnap.Result, &f.Result)
-		if fsnap.CallerIdx >= 0 {
+		if fsnap.CallerIdx >= 0 && fsnap.CallerIdx < len(frames) {
 			f.Caller = frames[fsnap.CallerIdx]
 		}
-		if fsnap.StaticIdx >= 0 {
+		if fsnap.StaticIdx >= 0 && fsnap.StaticIdx < len(frames) {
 			f.Static = frames[fsnap.StaticIdx]
 		}
 	}
@@ -465,7 +470,7 @@ func RestoreVM(prog *Program, data []byte) (*VM, error) {
 
 	for _, h := range s.Handlers {
 		th := tryHandler{pc: h.PC, stackDepth: h.StackDepth, callDepth: h.CallDepth, isFinally: h.IsFinally}
-		if h.FrameIdx >= 0 {
+		if h.FrameIdx >= 0 && h.FrameIdx < len(frames) {
 			th.frame = frames[h.FrameIdx]
 		}
 		vm.handlers = append(vm.handlers, th)

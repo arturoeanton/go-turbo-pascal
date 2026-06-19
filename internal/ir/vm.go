@@ -1096,6 +1096,9 @@ func (vm *VM) Step(frame *Frame) bool {
 	case OPMkString:
 		// Build a Pascal string from `count` chars.
 		count := int(ins.A)
+		if count < 0 {
+			count = 0 // guard against a malformed/corrupt operand
+		}
 		chars := make([]byte, count)
 		for i := count - 1; i >= 0; i-- {
 			v := vm.pop()
@@ -1105,6 +1108,9 @@ func (vm *VM) Step(frame *Frame) bool {
 		return true
 	case OPMkArray:
 		count := int(ins.A)
+		if count < 0 {
+			count = 0 // guard against a malformed/corrupt operand
+		}
 		arr := make([]Value, count)
 		for i := count - 1; i >= 0; i-- {
 			arr[i] = vm.pop()
