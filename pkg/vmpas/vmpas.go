@@ -1,10 +1,20 @@
-// Package vmpas embeds the BPGo Pascal engine in Go programs.
+// Package vmpas embeds the go-turbo-pascal engine in Go programs.
 //
-// vmpas is a fast, strongly-typed dynamic-code engine: it compiles and
-// type-checks Turbo Pascal 7 source ahead of execution (catching errors
-// before the first run) and executes it on the embedded bytecode VM
-// (internal/ir). Go variables, functions and structs can be bound so guest
-// Pascal code can read/write them and call into the host.
+// vmpas is a fast, strongly-typed scripting engine: it compiles and type-checks
+// Turbo Pascal 7 source ahead of execution (catching errors before the first
+// run) and executes it on the embedded bytecode VM (internal/ir). Go variables,
+// functions and structs can be bound so guest Pascal code can read/write them
+// and call into the host.
+//
+//	eng := vmpas.New()        // restricted sandbox by default
+//	total := 10
+//	eng.Var("total", &total)
+//	eng.Run("for i := 1 to 5 do total := total + i")
+//	// total == 25
+//
+// See the Example functions for the distinctive features: a capability sandbox
+// (RunSandboxed), capability inference (Engine.Analyze) and durable execution
+// (Engine.RunDurable / ResumeDurable — pause, persist and resume a run).
 //
 // Security: every Engine runs under a capability sandbox (see Capabilities).
 // The default (New / Restricted) denies filesystem, network, process-exec and

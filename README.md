@@ -84,6 +84,17 @@ eng.Run(`for i := 1 to 5 do total := total + i`)
 // total == 25
 ```
 
+…and the part a generic scripting engine won't give you in one import — run
+**untrusted** code safely. A default-deny sandbox with hard limits stops a
+runaway script instead of hanging your process:
+
+```go
+out, err := vmpas.RunSandboxed(`
+  program P; var i: Integer;
+  begin while true do i := i + 1 end.`, vmpas.Sandboxed())
+// out == "", err == *vmpas.RuntimeError (step/time limit) — the host keeps running
+```
+
 Run a `.pas` program on the engine:
 
 ```bash
