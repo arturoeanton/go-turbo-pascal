@@ -62,4 +62,6 @@ answer and resumes on a fresh engine (`ResumeDurable`), continuing exactly where
 it left off. See [`../docs/en/durable.md`](../docs/en/durable.md).
 
 See also [`../docs/en/getting-started.md`](../docs/en/getting-started.md) and the
-embedding guide in [`../docs/en/vmpas.md`](../docs/en/vmpas.md).
+embedding guide in [`../docs/en/vmpas.md`](../docs/en/vmpas.md). The full API
+reference, with runnable examples, is on
+[pkg.go.dev](https://pkg.go.dev/github.com/arturoeanton/go-turbo-pascal/pkg/vmpas).
