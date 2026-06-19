@@ -310,7 +310,7 @@ func (e *Engine) execLocked(prog *ir.Program) error {
 			// A bound Go function returned an error that propagated uncaught.
 			return fmt.Errorf("vmpas: %s", e.hostErr)
 		}
-		return fmt.Errorf("vmpas: runtime error %d", vm.RuntimeError)
+		return newRuntimeError(vm.RuntimeError)
 	}
 	e.readbackVars(vm)
 	return nil

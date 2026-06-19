@@ -58,10 +58,12 @@ func TestAPIContract(t *testing.T) {
 		FileSystem: true, Network: true, Exec: true, Env: true, Database: true,
 		MaxSteps: 0, MaxHeap: 0, MaxOutput: 0, MaxCallDepth: 0,
 		MaxDuration: time.Duration(0), Deterministic: true, Seed: 0, Audit: true,
+		LiveBindings: true,
 	}
 	var _ = State{Tag: "", Data: nil, Output: ""}
 	var _ = AuditEntry{Capability: CapEnv, Builtin: "", Args: nil}
 	var _ = CapReport{Required: nil, Calls: nil}
+	var _ error = &RuntimeError{Code: 0, Message: ""}
 
 	// Capability constants.
 	var _ Capability = CapFileSystem

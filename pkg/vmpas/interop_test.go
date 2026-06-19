@@ -163,6 +163,25 @@ func TestErrorOnlyProcedure(t *testing.T) {
 	}
 }
 
+// --- typed runtime errors (A3) ---
+
+func TestRuntimeErrorTyped(t *testing.T) {
+	// A sandbox-limit breach surfaces as a *RuntimeError with the TP7 code and a
+	// human-readable message, inspectable with errors.As.
+	e := NewWith(Capabilities{MaxSteps: 1000})
+	err := e.Run(`program P; var i: Integer; begin i := 0; while true do i := i + 1; end.`)
+	var re *RuntimeError
+	if !errors.As(err, &re) {
+		t.Fatalf("want *RuntimeError, got %T: %v", err, err)
+	}
+	if re.Code != 200 {
+		t.Fatalf("want code 200 (step limit), got %d", re.Code)
+	}
+	if !strings.Contains(re.Error(), "limit") {
+		t.Fatalf("want a descriptive message, got %q", re.Error())
+	}
+}
+
 // --- output cap on a single oversized write (B1) ---
 
 func TestMaxOutputSingleWrite(t *testing.T) {

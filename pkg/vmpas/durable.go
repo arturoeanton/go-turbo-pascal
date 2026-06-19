@@ -103,7 +103,7 @@ func (e *Engine) runDurableLocked(prog *ir.Program, st *State) (*State, error) {
 		return &State{Tag: e.suspendTag, Data: data, Output: e.output}, nil
 	}
 	if vm.RuntimeError != 0 {
-		return nil, fmt.Errorf("vmpas: runtime error %d", vm.RuntimeError)
+		return nil, newRuntimeError(vm.RuntimeError)
 	}
 	return nil, nil
 }
