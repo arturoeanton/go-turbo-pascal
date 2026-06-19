@@ -1,13 +1,13 @@
-// Ejemplo: consumir una API HTTP y una base SQL desde Pascal embebido.
+// Example: consume an HTTP API and a SQL database from embedded Pascal.
 //
-// Ejecutar con:
+// Run with:
 //
 //	go run ./examples/integration
 //
-// Es autocontenido y offline: levanta un servidor HTTP local y usa una base
-// SQL en memoria (implementando la interfaz vmpas.SQLDB), así no requiere red
-// externa ni drivers de terceros. Muestra las capacidades Network y Database
-// del sandbox y la API Http*/Db* del motor.
+// It is self-contained and offline: it starts a local HTTP server and uses an
+// in-memory SQL database (implementing the vmpas.SQLDB interface), so it needs
+// no external network or third-party drivers. Shows the sandbox's Network and
+// Database capabilities and the engine's Http*/Db* API.
 package main
 
 import (
@@ -19,13 +19,13 @@ import (
 )
 
 func main() {
-	// --- Servidor HTTP local (simula una API) ---
+	// --- Local HTTP server (simulates an API) ---
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, `{"status":"ok","user":{"name":"alice"},"items":[10,20,30]}`)
 	}))
 	defer srv.Close()
 
-	// --- Base SQL en memoria (el host provee la implementación) ---
+	// --- In-memory SQL database (the host provides the implementation) ---
 	db := newMemDB([]string{"id", "name"}, [][]any{
 		{int64(1), "alice"},
 		{int64(2), "bob"},
@@ -48,21 +48,21 @@ func main() {
 
 	script := `
 begin
-  { Consumir la API y parsear el JSON de la respuesta }
+  { Consume the API and parse the JSON of the response }
   WriteLn('GET ', url);
   body := HttpGet(url);
   WriteLn('status: ', HttpLastStatus);
   WriteLn('user.name: ', JsonStr(body, 'user.name'));
-  WriteLn('items: ', JsonLen(body, 'items'), ' (primero=', JsonInt(body, 'items.0'), ')');
+  WriteLn('items: ', JsonLen(body, 'items'), ' (first=', JsonInt(body, 'items.0'), ')');
 
-  { Construir un JSON y enviarlo por POST }
+  { Build a JSON document and send it via POST }
   req := JsonSetStr('{}', 'user.name', 'bob');
   req := JsonSetInt(req, 'user.age', 25);
   WriteLn('POST body: ', req);
   WriteLn('POST resp: ', HttpPost(url, 'application/json', req));
 
-  { Recorrer una consulta SQL }
-  WriteLn('usuarios:');
+  { Iterate over a SQL query }
+  WriteLn('users:');
   if DbOpen('SELECT id, name FROM users') then
     while not DbEof do
     begin
@@ -78,7 +78,7 @@ end.`
 	fmt.Print(eng.Output())
 }
 
-// --- Base SQL en memoria que satisface vmpas.SQLDB ---
+// --- In-memory SQL database that satisfies vmpas.SQLDB ---
 
 type memDB struct {
 	cols []string

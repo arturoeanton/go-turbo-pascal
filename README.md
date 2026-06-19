@@ -8,7 +8,12 @@ for `.pas` files. The compiler front-end and bytecode VM are a clean-room
 implementation: no Borland binary, source, or documentation is embedded.
 
 [![CI](https://github.com/arturoeanton/go-turbo-pascal/actions/workflows/ci.yml/badge.svg)](https://github.com/arturoeanton/go-turbo-pascal/actions/workflows/ci.yml)
+&nbsp;·&nbsp; [![Go Reference](https://pkg.go.dev/badge/github.com/arturoeanton/go-turbo-pascal/pkg/vmpas.svg)](https://pkg.go.dev/github.com/arturoeanton/go-turbo-pascal/pkg/vmpas)
 &nbsp;·&nbsp; Go 1.23+ &nbsp;·&nbsp; MIT licensed &nbsp;·&nbsp; `pkg/vmpas` has **zero external dependencies**
+
+```bash
+go get github.com/arturoeanton/go-turbo-pascal/pkg/vmpas
+```
 
 📖 **Documentation:** [🇬🇧 English](docs/en/README.md) · [🇪🇸 Español](docs/es/README.md) · [Examples](examples/README.md)
 

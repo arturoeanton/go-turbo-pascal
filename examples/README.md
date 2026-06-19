@@ -1,65 +1,65 @@
-# Ejemplos
+# Examples
 
-## Programas Pascal (`examples/pascal/`)
+## Pascal programs (`examples/pascal/`)
 
-Ejecutar con el motor real:
+Run them on the real engine:
 
 ```bash
-go run ./cmd/pasrun examples/pascal/<archivo>.pas
+go run ./cmd/pasrun examples/pascal/<file>.pas
 ```
 
-| Archivo | Muestra |
+| File | Shows |
 |---|---|
-| `factorial.pas` | funciones recursivas |
-| `listas.pas` | punteros y records (lista enlazada) |
-| `figuras.pas` | OOP: objetos, herencia, `inherited` |
-| `calc.pas` | `ReadLn` + formato de campo (`echo "12 5" \| pasrun ...`) |
-| `crt_demo.pas` | unit `Crt`: ClrScr/GotoXY/TextColor (salida ANSI) |
-| `units/demo.pas` | sistema de units (`uses`, interface/implementation/initialization) |
+| `factorial.pas` | recursive functions |
+| `listas.pas` | pointers and records (linked list) |
+| `figuras.pas` | OOP: objects, inheritance, `inherited` |
+| `calc.pas` | `ReadLn` + field formatting (`echo "12 5" \| pasrun ...`) |
+| `crt_demo.pas` | the `Crt` unit: ClrScr/GotoXY/TextColor (ANSI output) |
+| `units/demo.pas` | the unit system (`uses`, interface/implementation/initialization) |
 
-## Embeber Pascal en Go (`examples/embed/`)
+## Embedding Pascal in Go (`examples/embed/`)
 
 ```bash
 go run ./examples/embed
 ```
 
-Demuestra `pkg/vmpas`: ejecutar Pascal, enlazar variables Go, mapear un
-`struct` de Go a un `record` de Pascal, llamar funciones Go desde Pascal y el
-sandbox de capacidades.
+Demonstrates `pkg/vmpas`: running Pascal, binding Go variables, mapping a Go
+`struct` to a Pascal `record`, calling Go functions from Pascal, and the
+capability sandbox.
 
-## Consumir APIs y SQL (`examples/integration/`)
+## Consuming APIs and SQL (`examples/integration/`)
 
 ```bash
 go run ./examples/integration
 ```
 
-Autocontenido y offline: levanta un servidor HTTP local y una base SQL en
-memoria, y desde Pascal consume la API (`HttpGet`/`HttpPost`/`HttpLastStatus`)
-y recorre una consulta (`DbOpen`/`DbEof`/`DbNext`/`DbFieldInt`/`DbFieldStr`)
-bajo las capacidades `Network` y `Database`.
+Self-contained and offline: it starts a local HTTP server and an in-memory SQL
+database, and from Pascal consumes the API (`HttpGet`/`HttpPost`/`HttpLastStatus`)
+and walks a query (`DbOpen`/`DbEof`/`DbNext`/`DbFieldInt`/`DbFieldStr`) under the
+`Network` and `Database` capabilities.
 
-## Scripts multi-tenant aislados (`examples/multitenant/`)
+## Isolated multi-tenant scripts (`examples/multitenant/`)
 
 ```bash
 go run ./examples/multitenant
 ```
 
-Simula un SaaS donde cada tenant sube su propia regla de negocio: ejecuta cada
-script en un engine fresco y acotado con `vmpas.RunSandboxed` + el preset
-`vmpas.Sandboxed()` (default-deny, con techos de pasos/heap/salida/profundidad/
-tiempo). Muestra el aislamiento *share-nothing* y cómo un script malicioso
-(bucle infinito) se detiene sin colgar el host.
+Simulates a SaaS where each tenant submits its own business rule: it runs every
+script on a fresh, bounded engine with `vmpas.RunSandboxed` + the
+`vmpas.Sandboxed()` preset (default-deny, with step/heap/output/depth/time
+ceilings). It shows *share-nothing* isolation and how a malicious script (an
+infinite loop) is stopped without hanging the host.
 
-## Ejecución durable: pausar y reanudar (`examples/durable/`)
+## Durable execution: pause and resume (`examples/durable/`)
 
 ```bash
 go run ./examples/durable
 ```
 
-Una regla de aprobación de gastos se ejecuta hasta que necesita una decisión
-humana: se pausa con `Suspend`, el host serializa el estado (`RunDurable` →
-`*State`), inyecta la respuesta y reanuda en un engine nuevo (`ResumeDurable`),
-continuando exactamente donde quedó. Ver [`../docs/es/durable.md`](../docs/es/durable.md).
+An expense-approval rule runs until it needs a human decision: it pauses with
+`Suspend`, the host serializes the state (`RunDurable` → `*State`), injects the
+answer and resumes on a fresh engine (`ResumeDurable`), continuing exactly where
+it left off. See [`../docs/en/durable.md`](../docs/en/durable.md).
 
-Ver también [`../docs/es/inicio.md`](../docs/es/inicio.md) y la sección de
-integración en [`../docs/es/vmpas.md`](../docs/es/vmpas.md).
+See also [`../docs/en/getting-started.md`](../docs/en/getting-started.md) and the
+embedding guide in [`../docs/en/vmpas.md`](../docs/en/vmpas.md).
