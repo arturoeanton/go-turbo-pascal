@@ -30,7 +30,6 @@ type snapshot struct {
 	Fingerprint uint64 // identifies the program the snapshot belongs to
 
 	Steps         int
-	RandomState   uint32
 	ExitCode      int
 	RuntimeError  int
 	Deterministic bool
@@ -225,7 +224,6 @@ func (vm *VM) Snapshot() ([]byte, error) {
 		Version:       snapshotVersion,
 		Fingerprint:   progFingerprint(vm.Program),
 		Steps:         vm.Steps,
-		RandomState:   vm.RandomState,
 		ExitCode:      vm.ExitCode,
 		RuntimeError:  vm.RuntimeError,
 		Deterministic: vm.Deterministic,
@@ -409,7 +407,6 @@ func RestoreVM(prog *Program, data []byte) (*VM, error) {
 
 	vm := NewVM(prog)
 	vm.Steps = s.Steps
-	vm.RandomState = s.RandomState
 	vm.ExitCode = s.ExitCode
 	vm.RuntimeError = s.RuntimeError
 	vm.Deterministic = s.Deterministic

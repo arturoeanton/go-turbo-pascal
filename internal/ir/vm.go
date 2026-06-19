@@ -237,7 +237,6 @@ type VM struct {
 	MaxCallDepth int       // max call-stack depth (0 = unlimited)
 	Deadline     time.Time // wall-clock deadline (zero = none)
 	hasDeadline  bool      // cached !Deadline.IsZero(), set at run start
-	RandomState  uint32
 	// Deterministic, when set, makes execution fully reproducible: Randomize
 	// seeds the RNG from DetRandSeed instead of the host entropy source, so the
 	// same program + same inputs always produce the same output and the same
@@ -448,15 +447,14 @@ func (in *Input) ReadLine() string {
 
 func NewVM(p *Program) *VM {
 	return &VM{
-		Program:     p,
-		Globals:     map[string]*Value{},
-		Heap:        []Value{},
-		Output:      &Output{},
-		Input:       &Input{},
-		Builtins:    map[string]Builtin{},
-		MaxSteps:    10000000,
-		RandomState: 1,
-		builtinGen:  atomic.AddInt64(&builtinGenSeq, 1),
+		Program:    p,
+		Globals:    map[string]*Value{},
+		Heap:       []Value{},
+		Output:     &Output{},
+		Input:      &Input{},
+		Builtins:   map[string]Builtin{},
+		MaxSteps:   10000000,
+		builtinGen: atomic.AddInt64(&builtinGenSeq, 1),
 	}
 }
 
@@ -1345,6 +1343,18 @@ func (vm *VM) chargeHeap() bool {
 		return false
 	}
 	return true
+}
+
+// AllocHeap appends a zero-initialized cell to the heap, enforcing MaxHeap, and
+// returns its index. On a heap-limit breach it sets a runtime error and returns
+// -1. It is the allocation path RTL builtins (New/GetMem) use so they count
+// against MaxHeap and hand back a valid (in-range) heap index.
+func (vm *VM) AllocHeap() int64 {
+	if !vm.chargeHeap() {
+		return -1
+	}
+	vm.Heap = append(vm.Heap, Value{})
+	return int64(len(vm.Heap) - 1)
 }
 
 func (vm *VM) pop() Value {

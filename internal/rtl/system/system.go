@@ -170,7 +170,11 @@ func irToReal(v ir.Value) float64 {
 // Memory
 
 func builtinNew(vm *ir.VM, args []ir.Value) ir.Value {
-	return ir.Value{Kind: ir.VKPtr, Ptr: int64(len(vm.Heap))}
+	idx := vm.AllocHeap()
+	if idx < 0 {
+		return ir.Value{Kind: ir.VKNil}
+	}
+	return ir.Value{Kind: ir.VKPtr, Ptr: idx}
 }
 
 func builtinDispose(vm *ir.VM, args []ir.Value) ir.Value {
@@ -178,7 +182,11 @@ func builtinDispose(vm *ir.VM, args []ir.Value) ir.Value {
 }
 
 func builtinGetMem(vm *ir.VM, args []ir.Value) ir.Value {
-	return ir.Value{Kind: ir.VKPtr, Ptr: int64(len(vm.Heap))}
+	idx := vm.AllocHeap()
+	if idx < 0 {
+		return ir.Value{Kind: ir.VKNil}
+	}
+	return ir.Value{Kind: ir.VKPtr, Ptr: idx}
 }
 
 func builtinFreeMem(vm *ir.VM, args []ir.Value) ir.Value {
