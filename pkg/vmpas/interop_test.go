@@ -163,6 +163,28 @@ func TestErrorOnlyProcedure(t *testing.T) {
 	}
 }
 
+// --- output cap on a single oversized write (B1) ---
+
+func TestMaxOutputSingleWrite(t *testing.T) {
+	// Build a large string in memory, then emit it in ONE Write. The byte cap is
+	// enforced at write time, so even a single oversized write is bounded — not
+	// only a loop of small writes.
+	e := NewWith(Capabilities{MaxOutput: 64})
+	err := e.Run(`program P;
+var i: Integer; s: string;
+begin
+  s := 'x';
+  for i := 1 to 8 do s := s + s;   { saturates ShortString well past 64 }
+  Write(s);
+end.`)
+	if err == nil {
+		t.Fatal("expected an output-limit error on a single oversized write")
+	}
+	if got := len(e.Output()); got > 64 {
+		t.Fatalf("output not bounded by MaxOutput: %d bytes (want <= 64)", got)
+	}
+}
+
 // --- #1 live bindings ---
 
 func TestLiveBindingsHostMutationVisible(t *testing.T) {

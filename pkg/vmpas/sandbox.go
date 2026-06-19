@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/arturoeanton/go-turbo-pascal/internal/ir"
 )
@@ -95,7 +96,14 @@ func (e *Engine) registerHTTP(vm *ir.VM) {
 		for k, v := range e.httpHeaders {
 			req.Header.Set(k, v)
 		}
-		resp, err := http.DefaultClient.Do(req)
+		// Bound the request: an untrusted guest with Network granted must not be
+		// able to hang the host on a slow/hostile URL (http.DefaultClient has no
+		// timeout). Honor MaxDuration when set, otherwise a sane default.
+		timeout := 30 * time.Second
+		if e.caps.MaxDuration > 0 {
+			timeout = e.caps.MaxDuration
+		}
+		resp, err := (&http.Client{Timeout: timeout}).Do(req)
 		if err != nil {
 			e.httpStatus = 0
 			return ir.Value{Kind: ir.VKStr}

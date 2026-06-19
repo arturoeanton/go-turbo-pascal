@@ -34,6 +34,40 @@ begin
 end.`, "10.00\n")
 }
 
+func TestCurrencyDivByNumber(t *testing.T) {
+	// money / number stays money (an even split), rounded half-up.
+	check(t, `program P;
+var price, share: Currency;
+begin
+  price := 10.00;
+  share := price / 4;
+  WriteLn(share);       { 2.50 }
+end.`, "2.50\n")
+}
+
+func TestCurrencyDivByZero(t *testing.T) {
+	// money / 0 yields zero money rather than panicking.
+	check(t, `program P;
+var price, share: Currency;
+begin
+  price := 10.00;
+  share := price / 0;
+  WriteLn(share);       { 0.00 }
+end.`, "0.00\n")
+}
+
+func TestCurrencyDivByMoneyRatio(t *testing.T) {
+	// money / money is a dimensionless ratio (a real number).
+	check(t, `program P;
+var a, b: Currency; r: Real;
+begin
+  a := 10.00;
+  b := 4.00;
+  r := a / b;
+  if r = 2.5 then WriteLn('ratio ok') else WriteLn('bad');
+end.`, "ratio ok\n")
+}
+
 func TestCurrencyCompare(t *testing.T) {
 	check(t, `program P;
 var a, b: Currency;

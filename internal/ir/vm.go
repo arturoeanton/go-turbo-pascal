@@ -369,6 +369,11 @@ type Output struct {
 	// W, when set, receives output live (in addition to Buf) so interactive
 	// programs show prompts before they read input.
 	W io.Writer
+	// Max bounds the captured output in bytes (0 = unlimited). It is enforced at
+	// write time so a single oversized write cannot exhaust host memory before
+	// the next per-step check; WriteString truncates at the cap and sets Over.
+	Max  int
+	Over bool
 }
 
 type Input struct {
@@ -380,6 +385,17 @@ type Input struct {
 }
 
 func (o *Output) WriteString(s string) {
+	if o.Max > 0 {
+		room := o.Max - o.Buf.Len()
+		if room <= 0 {
+			o.Over = true
+			return
+		}
+		if len(s) > room {
+			s = s[:room]
+			o.Over = true
+		}
+	}
 	o.Buf.WriteString(s)
 	if o.W != nil {
 		io.WriteString(o.W, s)
@@ -438,10 +454,10 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.Halted = true
 		return false
 	}
-	// Output cap: bound the captured output so an untrusted guest cannot
-	// exhaust host memory by writing in a loop. Gated on MaxOutput so the
-	// common (uncapped) case pays only one comparison.
-	if vm.MaxOutput > 0 && vm.Output.Buf.Len() > vm.MaxOutput {
+	// Output cap: the byte limit is enforced at write time (Output.WriteString
+	// truncates and sets Over), so even a single oversized write is bounded; here
+	// we only turn that into a clean runtime error. One bool read per step.
+	if vm.Output.Over {
 		vm.RuntimeError = 203 // output limit exceeded
 		vm.Halted = true
 		return false
@@ -1022,6 +1038,11 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.CallStack = append(vm.CallStack, newFrame)
 		return true
 	case OPDup:
+		if len(vm.Stack) == 0 {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
 		vm.Stack = append(vm.Stack, vm.Stack[len(vm.Stack)-1])
 		return true
 	case OPDup2:
@@ -1114,7 +1135,7 @@ func (vm *VM) Step(frame *Frame) bool {
 		return true
 	case OPDeref:
 		p := vm.pop()
-		if p.Kind == VKNil || p.Ptr < 0 {
+		if p.Kind == VKNil || p.Ptr < 0 || int(p.Ptr) >= len(vm.Heap) {
 			vm.RuntimeError = 204
 			vm.Halted = true
 			return false
@@ -1122,9 +1143,19 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.Stack = append(vm.Stack, vm.Heap[p.Ptr])
 		return true
 	case OPInc:
+		if len(vm.Stack) == 0 {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
 		vm.Stack[len(vm.Stack)-1].Int++
 		return true
 	case OPDec:
+		if len(vm.Stack) == 0 {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
 		vm.Stack[len(vm.Stack)-1].Int--
 		return true
 	case OPAndSC:
@@ -1154,6 +1185,11 @@ func (vm *VM) Step(frame *Frame) bool {
 		// Layout: push case-value(s) before OPCaseTest. Jumps if any matches.
 		// For simplicity we do a linear walk of subsequent CaseInstrs in the
 		// interpreter by chaining through ins.A as the "next case test" PC.
+		if len(vm.Stack) == 0 {
+			vm.RuntimeError = 204
+			vm.Halted = true
+			return false
+		}
 		v := vm.Stack[len(vm.Stack)-1]
 		if compareLiteral(ins.S, v) {
 			frame.PC = int(ins.B)
@@ -1281,6 +1317,9 @@ func (vm *VM) pop() Value {
 
 // Run executes the program until it halts.
 func (vm *VM) Run() {
+	if vm.Output != nil {
+		vm.Output.Max = vm.MaxOutput // enforce the output cap at write time
+	}
 	// Initialize globals.
 	for _, m := range vm.Program.Modules {
 		for _, g := range m.Globals {
@@ -1433,6 +1472,9 @@ func (vm *VM) runFrame(frame *Frame) {
 // the next suspension. It clears Halted/Suspended and runs until the call stack
 // empties or the program halts again.
 func (vm *VM) RunResume() {
+	if vm.Output != nil {
+		vm.Output.Max = vm.MaxOutput
+	}
 	vm.Halted = false
 	vm.Suspended = false
 	for !vm.Halted && len(vm.CallStack) > 0 {
