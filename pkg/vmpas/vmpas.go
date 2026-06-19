@@ -29,6 +29,7 @@
 package vmpas
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -118,14 +119,15 @@ type Engine struct {
 	// when bindings or capabilities change.
 	builtins map[string]ir.Builtin
 	// Host integration state (single-threaded per run; guarded by mu).
-	db          SQLDB             // database handle injected via UseDB (Database cap)
-	cursor      *dbCursor         // active query cursor (Db* dataset-style API)
-	dbErr       string            // last DB error message (DbError)
-	httpStatus  int               // status code of the last HTTP call (HttpLastStatus)
-	httpHeaders map[string]string // headers applied to subsequent HTTP requests
-	suspendTag  string            // tag from the last Suspend call (durable runs)
-	audit       []AuditEntry      // capability-gated calls recorded this run (Audit cap)
-	hostErr     string            // message of the last host error raised as an exception
+	db          SQLDB                // database handle injected via UseDB (Database cap)
+	cursor      *dbCursor            // active query cursor (Db* dataset-style API)
+	dbErr       string               // last DB error message (DbError)
+	httpStatus  int                  // status code of the last HTTP call (HttpLastStatus)
+	httpHeaders map[string]string    // headers applied to subsequent HTTP requests
+	suspendTag  string               // tag from the last Suspend call (durable runs)
+	audit       []AuditEntry         // capability-gated calls recorded this run (Audit cap)
+	hostErr     string               // message of the last host error raised as an exception
+	lastGlobals map[string]*ir.Value // globals of the last successful run, for Get
 }
 
 // UseDB binds a database handle for the Db* host builtins. The handle is the
@@ -272,6 +274,50 @@ func (e *Engine) Run(code string) error {
 	return e.execLocked(prog)
 }
 
+// RunContext is Run with cooperative cancellation: if ctx is cancelled or its
+// deadline passes, the run halts shortly after and RunContext returns ctx.Err().
+// It is the recommended entry point for request-scoped execution (e.g. a server
+// handler that must abort work when the client goes away).
+func (e *Engine) RunContext(ctx context.Context, code string) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	prog, err := e.compileLocked(code)
+	if err != nil {
+		return err
+	}
+	return e.execLockedCtx(ctx, prog)
+}
+
+// RunContext executes the compiled script with cancellation (see Engine.RunContext).
+func (s *Script) RunContext(ctx context.Context) error {
+	s.eng.mu.Lock()
+	defer s.eng.mu.Unlock()
+	return s.eng.execLockedCtx(ctx, s.prog)
+}
+
+// Get reads a script global by name into out (a non-nil pointer) after a run,
+// converting it to the Go type the same way bound variables are. It is a
+// convenience for fetching a result without pre-binding a variable. Returns an
+// error if there was no successful run, the global is absent, or out is not a
+// non-nil pointer.
+func (e *Engine) Get(name string, out any) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.lastGlobals == nil {
+		return fmt.Errorf("vmpas: no completed run to read %q from", name)
+	}
+	cell, ok := e.lastGlobals[strings.ToLower(name)]
+	if !ok || cell == nil {
+		return fmt.Errorf("vmpas: no global %q in the last run", name)
+	}
+	rv := reflect.ValueOf(out)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return fmt.Errorf("vmpas: Get destination must be a non-nil pointer")
+	}
+	irToGo(*cell, rv.Elem())
+	return nil
+}
+
 // compileLocked compiles code against the current bindings (caller holds mu).
 func (e *Engine) compileLocked(code string) (*ir.Program, error) {
 	src, err := e.wrap(code)
@@ -299,10 +345,22 @@ func (e *Engine) compileLocked(code string) (*ir.Program, error) {
 // execLocked runs an already-compiled program (caller holds mu). It reuses the
 // cached builtin table and only sets up fresh per-run state (globals, stack).
 func (e *Engine) execLocked(prog *ir.Program) error {
+	return e.execLockedCtx(context.Background(), prog)
+}
+
+// execLockedCtx is execLocked with cooperative cancellation: the run halts
+// shortly after ctx is cancelled (or its deadline passes) and returns ctx.Err().
+func (e *Engine) execLockedCtx(ctx context.Context, prog *ir.Program) error {
 	vm := ir.NewVM(prog)
 	e.applyLimits(vm)
 	if e.caps.MaxDuration > 0 {
 		vm.Deadline = time.Now().Add(e.caps.MaxDuration)
+	}
+	if ctx != nil {
+		vm.Cancel = ctx.Done()
+		if dl, ok := ctx.Deadline(); ok && (vm.Deadline.IsZero() || dl.Before(vm.Deadline)) {
+			vm.Deadline = dl
+		}
 	}
 	vm.Builtins = e.prepareBuiltins()
 	// Reset per-run host state so nothing leaks across runs (important when an
@@ -310,11 +368,15 @@ func (e *Engine) execLocked(prog *ir.Program) error {
 	e.cursor, e.dbErr, e.httpStatus, e.httpHeaders = nil, "", 0, nil
 	e.audit = nil
 	e.hostErr = ""
+	e.lastGlobals = nil
 	e.seedVars(vm)
 
 	vm.Run()
 
 	e.output = vm.Output.String()
+	if ctx != nil && ctx.Err() != nil {
+		return ctx.Err() // cancelled or deadline exceeded
+	}
 	if vm.RuntimeError != 0 {
 		if e.hostErr != "" {
 			// A bound Go function returned an error that propagated uncaught.
@@ -323,6 +385,7 @@ func (e *Engine) execLocked(prog *ir.Program) error {
 		return newRuntimeError(vm.RuntimeError)
 	}
 	e.readbackVars(vm)
+	e.lastGlobals = vm.Globals // for Get
 	return nil
 }
 

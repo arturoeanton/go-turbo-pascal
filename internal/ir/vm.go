@@ -237,6 +237,9 @@ type VM struct {
 	MaxCallDepth int       // max call-stack depth (0 = unlimited)
 	Deadline     time.Time // wall-clock deadline (zero = none)
 	hasDeadline  bool      // cached !Deadline.IsZero(), set at run start
+	// Cancel, when non-nil, halts the run at the next check once it is closed
+	// (host-driven cancellation, e.g. a context.Context's Done channel).
+	Cancel <-chan struct{}
 	// Deterministic, when set, makes execution fully reproducible: Randomize
 	// seeds the RNG from DetRandSeed instead of the host entropy source, so the
 	// same program + same inputs always produce the same output and the same
@@ -479,6 +482,16 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.RuntimeError = 200
 		vm.Halted = true
 		return false
+	}
+	// Host cancellation (e.g. a context.Context): halt cleanly without a runtime
+	// error. Checked on the same throttled cadence as the deadline.
+	if vm.Cancel != nil && vm.Steps&0xFFF == 0 {
+		select {
+		case <-vm.Cancel:
+			vm.Halted = true
+			return false
+		default:
+		}
 	}
 	// Output cap: the byte limit is enforced at write time (Output.WriteString
 	// truncates and sets Over), so even a single oversized write is bounded; here

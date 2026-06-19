@@ -1,6 +1,7 @@
 package vmpas
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -43,6 +44,9 @@ func TestAPIContract(t *testing.T) {
 	var _ func(*Engine, SQLDB) = (*Engine).UseDB
 	var _ func(*Engine, string) (*CapReport, error) = (*Engine).Analyze
 	var _ func(*Engine) []AuditEntry = (*Engine).AuditLog
+	var _ func(*Engine, context.Context, string) error = (*Engine).RunContext
+	var _ func(*Script, context.Context) error = (*Script).RunContext
+	var _ func(*Engine, string, any) error = (*Engine).Get
 	var _ func(*Engine, string) (*State, error) = (*Engine).RunDurable
 	var _ func(*Engine, string, *State) (*State, error) = (*Engine).ResumeDurable
 

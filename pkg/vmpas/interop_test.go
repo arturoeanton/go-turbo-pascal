@@ -1,10 +1,56 @@
 package vmpas
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
 )
+
+// --- A5 context cancellation / A6 typed Get ---
+
+func TestRunContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancelled before the run starts
+	e := New()
+	err := e.RunContext(ctx, `program P; var i: Integer; begin i := 0; while true do i := i + 1; end.`)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("want context.Canceled, got %v", err)
+	}
+}
+
+func TestRunContextCompletes(t *testing.T) {
+	var out int
+	e := New()
+	_ = e.Var("out", &out)
+	if err := e.RunContext(context.Background(), `out := 21 * 2`); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+	if out != 42 {
+		t.Fatalf("want 42, got %d", out)
+	}
+}
+
+func TestGetTypedResult(t *testing.T) {
+	e := New()
+	if err := e.Run(`program P; var ans: Integer; msg: string; begin ans := 6 * 7; msg := 'hi'; end.`); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := e.Get("ans", &n); err != nil || n != 42 {
+		t.Fatalf("Get ans: n=%d err=%v", n, err)
+	}
+	var s string
+	if err := e.Get("msg", &s); err != nil || s != "hi" {
+		t.Fatalf("Get msg: s=%q err=%v", s, err)
+	}
+	if err := e.Get("missing", &n); err == nil {
+		t.Fatal("Get of an absent global should error")
+	}
+	if err := e.Get("ans", n); err == nil { // not a pointer
+		t.Fatal("Get into a non-pointer should error")
+	}
+}
 
 // --- #5 struct tags ---
 
