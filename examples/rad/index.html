@@ -15,49 +15,49 @@
   header input, header select { padding: 5px 6px; border-radius: 4px; border: 1px solid #3a4658; }
   button { cursor: pointer; border: 0; border-radius: 5px; padding: 6px 11px; font: inherit; background: #2d6cdf; color: #fff; }
   button.alt { background: #475569; } button.ok { background: #1f9d57; } button.no { background: #d14545; }
-  #wrap { display: grid; grid-template-columns: 160px 1fr 420px; height: calc(100vh - 50px); }
-  #palette { background: #eceef1; border-right: 1px solid #d7dbe0; padding: 10px; overflow:auto; }
+  #wrap { display: grid; grid-template-columns: 180px 1fr 420px; height: calc(100vh - 50px); }
+  #palette { background: #eceef1; border-right: 1px solid #d7dbe0; padding: 10px; overflow: auto; }
   #palette h2 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin: 4px 0 8px; }
-  .tool { background: #fff; border: 1px solid #cfd4da; border-radius: 6px; padding: 7px 9px; margin-bottom: 7px; cursor: grab; font-weight: 500; }
-  .tool small { display: block; color: #8a929c; font-weight: 400; font-size: 11px; }
+  .tool { background: #fff; border: 1px solid #cfd4da; border-radius: 6px; padding: 7px 9px; margin-bottom: 7px; cursor: grab; font-weight: 500; display: flex; justify-content: space-between; align-items: center; border-left: 4px solid #999; }
+  .tool .del { cursor: pointer; color: #b91c1c; font-weight: 700; opacity: .6; }
+  #newComp { width: 100%; margin-top: 6px; }
   #canvas { position: relative; overflow: auto; background:
       linear-gradient(#e9ebee 1px, transparent 1px) 0 0/22px 22px,
       linear-gradient(90deg, #e9ebee 1px, transparent 1px) 0 0/22px 22px, #f5f6f8; }
   svg#edges { position: absolute; inset: 0; width: 4000px; height: 4000px; pointer-events: none; }
-  .node { position: absolute; width: 250px; background: #fff; border: 1px solid #cfd4da; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  .node { position: absolute; width: 260px; background: #fff; border: 1px solid #cfd4da; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
   .node.sel { border-color: #2d6cdf; }
   .node .hd { padding: 6px 9px; border-radius: 8px 8px 0 0; color: #fff; font-weight: 600; cursor: grab; display: flex; justify-content: space-between; align-items: center; }
   .node .hd .x { cursor: pointer; opacity: .85; }
-  .node .bd { padding: 8px 9px; }
-  .node .bd label { font-size: 11px; color: #6b7280; }
-  .node .bd input { width: 100%; padding: 4px 6px; border: 1px solid #d7dbe0; border-radius: 4px; margin: 2px 0 6px; }
-  .node pre { margin: 0; background: #f3f4f6; border-radius: 5px; padding: 6px 8px; font-size: 11px; white-space: pre-wrap; color: #334155; max-height: 130px; overflow: auto; }
-  .node textarea { width: 100%; min-height: 90px; font-family: ui-monospace, monospace; font-size: 11px; border: 1px solid #d7dbe0; border-radius: 5px; padding: 6px; }
-  .t-start .hd { background: #1f9d57; } .t-log .hd { background: #475569; } .t-threshold .hd { background: #b8860b; }
-  .t-approval .hd { background: #c0392b; } .t-approved .hd { background: #2d6cdf; } .t-custom .hd { background: #6d28d9; } .t-end .hd { background: #0f172a; }
+  .node .bd { padding: 6px; }
+  .node textarea { width: 100%; min-height: 70px; font-family: ui-monospace, monospace; font-size: 11px; border: 1px solid #d7dbe0; border-radius: 5px; padding: 6px; }
   .node[data-status="done"] { box-shadow: 0 0 0 2px #1f9d57; }
   .node[data-status="paused"] { box-shadow: 0 0 0 3px #f59e0b; animation: pulse 1.1s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { box-shadow: 0 0 0 3px #f59e0b; } 50% { box-shadow: 0 0 0 6px #fde68a; } }
   #side { border-left: 1px solid #d7dbe0; background: #fff; display: flex; flex-direction: column; }
-  #side h2 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin: 10px 12px 4px; display:flex; justify-content:space-between; align-items:center; }
+  #side h2 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin: 10px 12px 4px; display: flex; justify-content: space-between; align-items: center; }
   #side h2 button { padding: 3px 8px; font-size: 11px; }
-  .CodeMirror, #prog { font-size: 12px; }
-  #side .CodeMirror { height: 230px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
-  #prog.fallback { display:block; width:100%; height:230px; font-family: ui-monospace, monospace; border:0; border-top:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; padding:8px; }
+  #side .CodeMirror { height: 200px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
+  #prog.fb { display: block; width: 100%; height: 200px; font-family: ui-monospace, monospace; border: 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; padding: 8px; }
   #out { flex: 1; overflow: auto; padding: 10px 12px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; }
   #status { padding: 8px 12px; border-top: 1px solid #e5e7eb; }
   .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
-  .pill.done { background: #dcfce7; color: #166534; } .pill.paused { background: #fef3c7; color: #92400e; } .pill.error { background: #fee2e2; color: #991b1b; } .pill.manual { background:#ede9fe; color:#5b21b6; }
-  #runs { max-height: 130px; overflow: auto; padding: 0 12px 10px; font-size: 12px; }
+  .pill.done { background: #dcfce7; color: #166534; } .pill.paused { background: #fef3c7; color: #92400e; } .pill.error { background: #fee2e2; color: #991b1b; }
+  #runs { max-height: 120px; overflow: auto; padding: 0 12px 10px; font-size: 12px; }
   .runrow { display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 3px 0; }
+  #modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; }
+  #modal .box { background: #fff; border-radius: 10px; padding: 16px; width: 460px; }
+  #modal h3 { margin: 0 0 10px; } #modal input { width: 100%; padding: 6px; margin-bottom: 8px; border: 1px solid #d7dbe0; border-radius: 5px; }
+  #modal .CodeMirror, #ncCode.fb { height: 160px; border: 1px solid #d7dbe0; border-radius: 5px; }
+  #modal .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
 </style>
 </head>
 <body>
 <header>
   <h1>vmpas · RAD durable workflow</h1>
-  <input id="flowName" placeholder="flow name" value="expense-approval">
-  <button class="alt" id="save">Save</button>
-  <select id="load"><option value="">Load…</option></select>
+  <input id="flowName" placeholder="program name" value="expense-approval">
+  <button class="alt" id="save">💾 Save</button>
+  <select id="load"><option value="">Load program…</option></select>
   <span class="sp"></span>
   <label>amount <input id="amount" type="number" value="2500" step="100" style="width:90px"></label>
   <button id="run">▶ Run</button>
@@ -65,19 +65,16 @@
 
 <div id="wrap">
   <div id="palette">
-    <h2>Drag onto canvas →</h2>
-    <div class="tool" draggable="true" data-type="log">Log<small>WriteLn message</small></div>
-    <div class="tool" draggable="true" data-type="threshold">Threshold<small>auto-approve if low</small></div>
-    <div class="tool" draggable="true" data-type="approval">Approval<small>Suspend (durable)</small></div>
-    <div class="tool" draggable="true" data-type="approved">Set approved<small>outcome := approved</small></div>
-    <div class="tool" draggable="true" data-type="custom">Custom Pascal<small>write your own code</small></div>
+    <h2>Components (drag →)</h2>
+    <div id="tools"></div>
+    <button id="newComp" class="alt">➕ New component</button>
     <h2>flow order = top → bottom</h2>
   </div>
 
   <div id="canvas"><svg id="edges"></svg></div>
 
   <div id="side">
-    <h2><span>Pascal program</span><span><button class="alt" id="recompose">↻ from boxes</button></span></h2>
+    <h2><span>Composed program</span><button class="alt" id="recompose">↻ from boxes</button></h2>
     <textarea id="prog"></textarea>
     <h2>Output</h2>
     <div id="out">Run the flow to see output…</div>
@@ -87,78 +84,89 @@
   </div>
 </div>
 
+<div id="modal"><div class="box">
+  <h3>New component</h3>
+  <input id="ncName" placeholder="component name (e.g. Notify)">
+  <textarea id="ncCode" placeholder="Pascal code, e.g. WriteLn('hello');"></textarea>
+  <div class="row"><button class="alt" id="ncCancel">Cancel</button><button id="ncAdd">Add to palette</button></div>
+</div></div>
+
 <script>
-// ---- editor abstraction: CodeMirror if available, else a plain textarea ------
+// ---- editor abstraction: CodeMirror if present, else plain textarea ---------
 function makeEditor(ta, opts) {
   opts = opts || {};
   if (window.CodeMirror) {
     const cm = CodeMirror.fromTextArea(ta, { mode: "text/x-pascal", lineNumbers: !!opts.lineNumbers, readOnly: !!opts.readOnly, viewportMargin: Infinity });
     return { get: () => cm.getValue(), set: v => cm.setValue(v), change: f => cm.on("change", f) };
   }
-  ta.classList.add("fallback"); ta.readOnly = !!opts.readOnly;
+  ta.classList.add("fb"); ta.readOnly = !!opts.readOnly;
   return { get: () => ta.value, set: v => { ta.value = v; }, change: f => ta.addEventListener("input", f) };
 }
 
-const TYPES = {
-  start:    { title: "Start", fixed: true },
-  log:      { title: "Log", msg: "Evaluating expense" },
-  threshold:{ title: "Threshold", limit: "1000" },
-  approval: { title: "Approval", fixed: false },
-  approved: { title: "Set approved", fixed: false },
-  custom:   { title: "Custom Pascal", code: "WriteLn('custom step');" },
-  end:      { title: "End", fixed: true },
-};
+// ---- component library (palette), persisted in the browser ------------------
+const BUILTIN = [
+  { name: "Start",        color: "#1f9d57", fixed: true, code: "outcome := '';" },
+  { name: "Log",          color: "#475569", code: "WriteLn('Evaluating expense');" },
+  { name: "Threshold",    color: "#b8860b", code: "if amount <= 1000.00 then\n  begin outcome := 'auto-approved'; WriteLn('Auto-approved'); Halt end;" },
+  { name: "Approval",     color: "#c0392b", code: "WriteLn('Awaiting approval...');\nSuspend('approval');\nif not approved then\n  begin outcome := 'rejected'; WriteLn('Rejected'); Halt end;" },
+  { name: "Set approved", color: "#2d6cdf", code: "outcome := 'approved';\nWriteLn('Approved');" },
+  { name: "End",          color: "#0f172a", fixed: true, code: "WriteLn('Result: ', outcome);" },
+];
+let components = [];
+function loadComponents() {
+  let custom = [];
+  try { custom = JSON.parse(localStorage.getItem("rad.components") || "[]"); } catch (e) {}
+  components = BUILTIN.concat(custom.map(c => Object.assign({ custom: true }, c)));
+}
+function saveComponents() {
+  localStorage.setItem("rad.components", JSON.stringify(components.filter(c => c.custom).map(c => ({ name: c.name, color: c.color, code: c.code }))));
+}
+function compByName(n) { return components.find(c => c.name === n); }
 
+function renderPalette() {
+  const t = document.getElementById("tools");
+  t.innerHTML = "";
+  components.forEach(c => {
+    const d = document.createElement("div");
+    d.className = "tool"; d.draggable = true; d.style.borderLeftColor = c.color;
+    d.innerHTML = "<span>" + c.name + "</span>" + (c.custom ? '<span class="del" title="remove">✕</span>' : "");
+    d.addEventListener("dragstart", e => e.dataTransfer.setData("comp", c.name));
+    const del = d.querySelector(".del");
+    if (del) del.addEventListener("click", () => { components = components.filter(x => x !== c); saveComponents(); renderPalette(); });
+    t.appendChild(d);
+  });
+}
+
+// ---- nodes (each box has its own editable code) ----------------------------
 let nodes = [], nid = 0, selected = null;
 const canvas = document.getElementById("canvas"), svg = document.getElementById("edges");
 
-function add(type, x, y, params) {
-  nodes.push({ id: "n" + (++nid), type, x, y, status: "", params: Object.assign({}, TYPES[type], params || {}) });
+function add(compName, x, y, code) {
+  const c = compByName(compName) || { color: "#6d28d9", code: "" };
+  nodes.push({ id: "n" + (++nid), comp: compName, color: c.color, code: code != null ? code : c.code, x, y, status: "" });
 }
 function ordered() { return [...nodes].sort((a, b) => a.y - b.y || a.x - b.x); }
 
-// ---- Pascal generation ------------------------------------------------------
-function esc(s) { return String(s).replace(/'/g, "''"); }
-function pascalFor(n) {
-  const p = n.params;
-  switch (n.type) {
-    case "start":     return "outcome := '';";
-    case "log":       return "WriteLn('" + esc(p.msg) + "');";
-    case "threshold": return "if amount <= " + (parseFloat(p.limit) || 0).toFixed(2) +
-                             " then\n  begin outcome := 'auto-approved'; WriteLn('Auto-approved'); Halt end;";
-    case "approval":  return "WriteLn('Awaiting approval...');\nSuspend('approval');\n" +
-                             "if not approved then\n  begin outcome := 'rejected'; WriteLn('Rejected'); Halt end;";
-    case "approved":  return "outcome := 'approved';\nWriteLn('Approved');";
-    case "custom":    return (p.code || "").trim();
-    case "end":       return "WriteLn('Result: ', outcome);";
-  }
-  return "";
-}
 function indent(s) { return s.split("\n").map(l => "  " + l).join("\n"); }
 function compose() {
-  const body = ordered().map(n => indent("Trace('" + n.id + "');\n" + pascalFor(n))).join("\n");
+  const body = ordered().map(n => indent("Trace('" + n.id + "');\n" + (n.code || "").trim())).join("\n");
   return "program Flow;\nvar amount: Currency; approved: Boolean; outcome: string;\nbegin\n" + body + "\nend.";
 }
 
-// ---- program panel (editable; manual edits win until "↻ from boxes") --------
+// ---- composed-program panel (editable; manual wins until "↻ from boxes") ----
 const prog = makeEditor(document.getElementById("prog"), { lineNumbers: true });
 let manual = false, settingProg = false;
-prog.change(() => { if (!settingProg) { manual = true; markManual(); } });
+prog.change(() => { if (!settingProg) manual = true; });
 function setProgram(v) { settingProg = true; prog.set(v); settingProg = false; }
 function refreshProgram() { if (!manual) setProgram(compose()); }
-function markManual() {
-  const s = document.getElementById("status");
-  if (manual && !s.dataset.m) { s.dataset.m = "1"; }
-}
 document.getElementById("recompose").onclick = () => { manual = false; setProgram(compose()); };
 
-// ---- rendering: build a node body once, then update in place -----------------
+// ---- rendering --------------------------------------------------------------
 function render() {
   const ids = new Set(nodes.map(n => n.id));
   document.querySelectorAll(".node").forEach(el => { if (!ids.has(el.dataset.id)) el.remove(); });
   nodes.forEach(renderNode);
-  drawEdges();
-  refreshProgram();
+  drawEdges(); refreshProgram();
 }
 function renderNode(n) {
   let el = document.querySelector('.node[data-id="' + n.id + '"]');
@@ -167,50 +175,34 @@ function renderNode(n) {
   el.classList.toggle("sel", selected === n);
   el.dataset.status = n.status || "";
   el.querySelector(".st").textContent = n.status === "done" ? " ✓" : n.status === "paused" ? " ⏸" : "";
-  const pre = el.querySelector("pre.gen"); if (pre) pre.textContent = pascalFor(n);
 }
 function buildNode(n) {
-  const def = TYPES[n.type];
   const el = document.createElement("div");
-  el.className = "node t-" + n.type; el.dataset.id = n.id;
-  const hd = document.createElement("div"); hd.className = "hd";
-  hd.innerHTML = '<span>' + def.title + '<b class="st"></b></span>' + (def.fixed ? '' : '<span class="x" title="delete">✕</span>');
+  el.className = "node"; el.dataset.id = n.id;
+  const hd = document.createElement("div"); hd.className = "hd"; hd.style.background = n.color;
+  hd.innerHTML = '<span>' + n.comp + '<b class="st"></b></span><span class="x" title="delete">✕</span>';
   hd.addEventListener("mousedown", e => startDrag(e, n));
   el.addEventListener("mousedown", () => { selected = n; document.querySelectorAll(".node").forEach(x => x.classList.toggle("sel", x.dataset.id === n.id)); });
-  const xb = hd.querySelector(".x"); if (xb) xb.addEventListener("click", ev => { ev.stopPropagation(); nodes = nodes.filter(x => x !== n); el.remove(); refreshProgram(); });
+  hd.querySelector(".x").addEventListener("click", ev => { ev.stopPropagation(); nodes = nodes.filter(x => x !== n); el.remove(); drawEdges(); refreshProgram(); });
   el.appendChild(hd);
-
   const bd = document.createElement("div"); bd.className = "bd"; el.appendChild(bd);
-  if (n.type === "log") paramField(bd, n, "msg", "message");
-  if (n.type === "threshold") paramField(bd, n, "limit", "auto-approve if amount <=");
-  if (n.type === "custom") {
-    const ta = document.createElement("textarea"); ta.value = n.params.code || ""; bd.appendChild(ta);
-    const ed = makeEditor(ta, {});
-    ed.set(n.params.code || "");
-    ed.change(() => { n.params.code = ed.get(); refreshProgram(); });
-  } else {
-    const pre = document.createElement("pre"); pre.className = "gen"; pre.textContent = pascalFor(n); bd.appendChild(pre);
-  }
+  const ta = document.createElement("textarea"); ta.value = n.code || ""; bd.appendChild(ta);
+  const ed = makeEditor(ta, {});
+  ed.set(n.code || "");
+  ed.change(() => { n.code = ed.get(); refreshProgram(); });
   return el;
-}
-function paramField(bd, n, key, label) {
-  const l = document.createElement("label"); l.textContent = label; bd.appendChild(l);
-  const i = document.createElement("input"); i.value = n.params[key];
-  i.addEventListener("input", () => { n.params[key] = i.value; const pre = bd.querySelector("pre.gen"); if (pre) pre.textContent = pascalFor(n); refreshProgram(); });
-  bd.appendChild(i);
-  const pre = document.createElement("pre"); pre.className = "gen"; pre.textContent = pascalFor(n); bd.appendChild(pre);
 }
 function drawEdges() {
   const seq = ordered(); let s = "";
   for (let i = 0; i + 1 < seq.length; i++) {
-    const a = seq[i], b = seq[i + 1], x1 = a.x + 125, y1 = a.y + 70, x2 = b.x + 125, y2 = b.y;
+    const a = seq[i], b = seq[i + 1], x1 = a.x + 130, y1 = a.y + 64, x2 = b.x + 130, y2 = b.y;
     s += '<path d="M' + x1 + ' ' + y1 + ' C ' + x1 + ' ' + (y1 + 40) + ' ' + x2 + ' ' + (y2 - 40) + ' ' + x2 + ' ' + y2 +
          '" stroke="#94a3b8" stroke-width="2" fill="none" marker-end="url(#arr)"/>';
   }
   svg.innerHTML = '<defs><marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#94a3b8"/></marker></defs>' + s;
 }
 
-// ---- dragging ---------------------------------------------------------------
+// ---- drag boxes / drop from palette ----------------------------------------
 let drag = null;
 function startDrag(e, n) { drag = { n, dx: e.clientX - n.x, dy: e.clientY - n.y }; e.preventDefault(); }
 window.addEventListener("mousemove", e => {
@@ -220,16 +212,31 @@ window.addEventListener("mousemove", e => {
   el.style.left = drag.n.x + "px"; el.style.top = drag.n.y + "px"; drawEdges();
 });
 window.addEventListener("mouseup", () => { if (drag) { drag = null; refreshProgram(); } });
-
-document.querySelectorAll(".tool").forEach(t => t.addEventListener("dragstart", e => e.dataTransfer.setData("type", t.dataset.type)));
 canvas.addEventListener("dragover", e => e.preventDefault());
 canvas.addEventListener("drop", e => {
   e.preventDefault();
-  const type = e.dataTransfer.getData("type"); if (!type) return;
+  const comp = e.dataTransfer.getData("comp"); if (!comp) return;
   const r = canvas.getBoundingClientRect();
-  add(type, e.clientX - r.left + canvas.scrollLeft - 125, e.clientY - r.top + canvas.scrollTop - 20);
+  add(comp, e.clientX - r.left + canvas.scrollLeft - 130, e.clientY - r.top + canvas.scrollTop - 20);
   render();
 });
+
+// ---- new-component modal ----------------------------------------------------
+const modal = document.getElementById("modal");
+let ncEd = null;
+document.getElementById("newComp").onclick = () => {
+  document.getElementById("ncName").value = "";
+  modal.style.display = "flex";
+  if (!ncEd) ncEd = makeEditor(document.getElementById("ncCode"), {});
+  ncEd.set("WriteLn('hello from my component');");
+};
+document.getElementById("ncCancel").onclick = () => modal.style.display = "none";
+document.getElementById("ncAdd").onclick = () => {
+  const name = document.getElementById("ncName").value.trim();
+  if (!name) { alert("name required"); return; }
+  components.push({ name, color: "#6d28d9", code: ncEd.get(), custom: true });
+  saveComponents(); renderPalette(); modal.style.display = "none";
+};
 
 // ---- run / resume + live highlight -----------------------------------------
 const out = document.getElementById("out"), statusEl = document.getElementById("status");
@@ -241,7 +248,7 @@ async function post(url, body) {
 function clearStatus() { nodes.forEach(n => n.status = ""); nodes.forEach(renderNode); }
 function markTrace(trace, paused) {
   (trace || []).forEach(id => { const n = nodes.find(x => x.id === id); if (n) n.status = "done"; });
-  if (paused) { const ap = nodes.find(n => n.type === "approval"); if (ap) ap.status = "paused"; }
+  if (paused && trace && trace.length) { const n = nodes.find(x => x.id === trace[trace.length - 1]); if (n) n.status = "paused"; }
   nodes.forEach(renderNode);
 }
 function show(res) {
@@ -266,20 +273,20 @@ document.getElementById("run").onclick = async () => {
   show(await post("/api/run", { program: prog.get(), amount, flow: document.getElementById("flowName").value.trim() }));
 };
 
-// ---- persistence (SQLite via backend) --------------------------------------
+// ---- save / load programs (SQLite via backend) -----------------------------
 async function saveFlow() {
   await post("/api/flows", { name: document.getElementById("flowName").value.trim() || "untitled", graph: JSON.stringify({ nodes }) });
   loadFlowList();
 }
 async function loadFlowList() {
   const list = await (await fetch("/api/flows")).json();
-  document.getElementById("load").innerHTML = '<option value="">Load…</option>' + list.map(f => '<option>' + f.name + '</option>').join("");
+  document.getElementById("load").innerHTML = '<option value="">Load program…</option>' + list.map(f => '<option>' + f.name + '</option>').join("");
 }
 async function loadFlow(name) {
   if (!name) return;
   const g = await (await fetch("/api/flow?name=" + encodeURIComponent(name))).json();
   document.querySelectorAll(".node").forEach(e => e.remove());
-  nodes = g.nodes || []; nodes.forEach(n => n.status = "");
+  nodes = (g.nodes || []).map(n => Object.assign({ status: "" }, n));
   nid = nodes.reduce((m, n) => Math.max(m, +String(n.id).slice(1) || 0), 0);
   document.getElementById("flowName").value = name; manual = false;
   render();
@@ -287,16 +294,16 @@ async function loadFlow(name) {
 async function loadRuns() {
   const list = await (await fetch("/api/runs")).json();
   document.getElementById("runs").innerHTML = list.map(r =>
-    '<div class="runrow"><span>' + (r.flow || "(flow)") + ' · <b>' + r.status + '</b> ' + (r.outcome || "") + '</span><span style="color:#94a3b8">' + (r.created || "").slice(11, 19) + '</span></div>'
+    '<div class="runrow"><span>' + (r.flow || "(prog)") + ' · <b>' + r.status + '</b> ' + (r.outcome || "") + '</span><span style="color:#94a3b8">' + (r.created || "").slice(11, 19) + '</span></div>'
   ).join("") || '<span style="color:#94a3b8">no runs yet</span>';
 }
 document.getElementById("save").onclick = saveFlow;
 document.getElementById("load").onchange = e => loadFlow(e.target.value);
 
-// ---- boot: a starter flow ---------------------------------------------------
-add("start", 40, 20); add("log", 40, 130, { msg: "Evaluating expense" });
-add("threshold", 40, 250, { limit: "1000" }); add("approval", 40, 400);
-add("approved", 40, 580); add("end", 40, 710);
+// ---- boot -------------------------------------------------------------------
+loadComponents(); renderPalette();
+add("Start", 40, 20); add("Log", 40, 120); add("Threshold", 40, 240);
+add("Approval", 40, 380); add("Set approved", 40, 560); add("End", 40, 700);
 render(); loadFlowList(); loadRuns();
 </script>
 </body>
