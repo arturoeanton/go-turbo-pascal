@@ -231,3 +231,33 @@ func BenchmarkCompileOnceRunMany(b *testing.B) {
 		_ = sc.Run()
 	}
 }
+
+// recordBenchSrc is record-heavy: it builds and copies records (by-value return)
+// and reads their fields in a loop, exercising record allocation and field
+// access — the path the slot/assoc-slice record representation optimizes.
+const recordBenchSrc = `program R;
+type TP = record a, b, c, d: Integer; end;
+function mk(n: Integer): TP;
+var r: TP;
+begin r.a := n; r.b := n * 2; r.c := n * 3; r.d := n * 4; mk := r; end;
+var i, s: Integer; p: TP;
+begin
+  s := 0;
+  for i := 1 to 500 do
+  begin
+    p := mk(i);
+    s := s + p.a + p.b + p.c + p.d;
+  end;
+end.`
+
+func BenchmarkRecordHeavy(b *testing.B) {
+	e := New()
+	sc, err := e.Compile(recordBenchSrc)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		_ = sc.Run()
+	}
+}

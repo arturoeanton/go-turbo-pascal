@@ -158,8 +158,8 @@ func (e *snapEncoder) markOwned(p *Value) {
 			e.markOwned(&p.Array[i])
 		}
 	case VKRecord:
-		for _, fc := range p.Rec {
-			e.markOwned(fc)
+		for i := range p.Rec {
+			e.markOwned(p.Rec[i].Cell)
 		}
 	}
 }
@@ -185,8 +185,8 @@ func (e *snapEncoder) discover(p *Value) {
 			e.discover(&p.Array[i])
 		}
 	case VKRecord:
-		for _, fc := range p.Rec {
-			e.discover(fc)
+		for i := range p.Rec {
+			e.discover(p.Rec[i].Cell)
 		}
 	}
 }
@@ -364,15 +364,18 @@ func (e *snapEncoder) encode(p *Value, errp *error) cellSnap {
 			c.Elems[i] = e.encode(&p.Array[i], errp)
 		}
 	case VKRecord:
-		keys := make([]string, 0, len(p.Rec))
-		for k := range p.Rec {
-			keys = append(keys, k)
+		// Serialize fields sorted by name for deterministic output (stable
+		// snapshot bytes regardless of insertion order).
+		order := make([]int, len(p.Rec))
+		for i := range order {
+			order[i] = i
 		}
-		sort.Strings(keys)
-		c.RecKeys = keys
-		c.RecVals = make([]cellSnap, len(keys))
-		for i, k := range keys {
-			c.RecVals[i] = e.encode(p.Rec[k], errp)
+		sort.Slice(order, func(a, b int) bool { return p.Rec[order[a]].Name < p.Rec[order[b]].Name })
+		c.RecKeys = make([]string, len(order))
+		c.RecVals = make([]cellSnap, len(order))
+		for i, idx := range order {
+			c.RecKeys[i] = p.Rec[idx].Name
+			c.RecVals[i] = e.encode(p.Rec[idx].Cell, errp)
 		}
 	case VKFile:
 		if *errp == nil {
@@ -529,11 +532,11 @@ func (d *snapDecoder) rebuild(c cellSnap, dst *Value) {
 			d.rebuild(c.Elems[i], &arr[i])
 		}
 	case VKRecord:
-		rec := make(map[string]*Value, len(c.RecKeys))
+		rec := make([]RecField, len(c.RecKeys))
 		dst.Rec = rec
 		for i, k := range c.RecKeys {
 			fc := new(Value)
-			rec[k] = fc
+			rec[i] = RecField{Name: k, Cell: fc}
 			d.rebuild(c.RecVals[i], fc)
 		}
 	}

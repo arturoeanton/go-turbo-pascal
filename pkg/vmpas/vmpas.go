@@ -617,15 +617,15 @@ func goToIR(v reflect.Value) ir.Value {
 	case reflect.String:
 		return ir.Value{Kind: ir.VKStr, Str: v.String()}
 	case reflect.Struct:
-		rec := map[string]*ir.Value{}
 		t := v.Type()
+		rec := make([]ir.RecField, 0, t.NumField())
 		for i := 0; i < t.NumField(); i++ {
 			name, skip := pascalFieldName(t.Field(i))
 			if skip {
 				continue
 			}
 			fv := goToIR(v.Field(i))
-			rec[strings.ToLower(name)] = &fv
+			rec = append(rec, ir.RecField{Name: strings.ToLower(name), Cell: &fv})
 		}
 		return ir.Value{Kind: ir.VKRecord, Rec: rec}
 	case reflect.Slice, reflect.Array:
@@ -683,7 +683,7 @@ func irToGo(val ir.Value, dst reflect.Value) {
 			if skip {
 				continue
 			}
-			if cell, ok := val.Rec[strings.ToLower(name)]; ok && cell != nil {
+			if cell := val.Field(strings.ToLower(name)); cell != nil {
 				irToGo(*cell, dst.Field(i))
 			}
 		}

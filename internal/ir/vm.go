@@ -24,8 +24,8 @@ type Value struct {
 	Str   string
 	Set   *[32]byte // set bitmap, allocated lazily (nil = empty set)
 	Array []Value
-	Rec   map[string]*Value // record fields, each an addressable cell
-	Ptr   int64             // address in the heap (negative = nil)
+	Rec   []RecField // record fields, each an addressable cell, kept in insertion order
+	Ptr   int64      // address in the heap (negative = nil)
 	File  *File
 	Ref   interface{} // generic slot
 	// Cell points at an addressable storage location when this Value is
@@ -33,6 +33,39 @@ type Value struct {
 	// cell, an array element or a record field. A VKPtr value with a nil
 	// Cell is the Pascal nil pointer.
 	Cell *Value
+}
+
+// RecField is one field of a record value: its name (lowercased, as codegen
+// emits it) and an addressable cell. Records use a small association slice
+// rather than a map: it avoids the map's allocation and per-access hashing
+// overhead, and record field counts are small. The cell stays a *Value so a
+// pointer taken into a field (var param, @field) survives the slice growing.
+type RecField struct {
+	Name string
+	Cell *Value
+}
+
+// Field returns the cell of the named record field, or nil if absent. The name
+// must be lowercased by the caller (matching how codegen and vmpas store names).
+func (v *Value) Field(name string) *Value {
+	for i := range v.Rec {
+		if v.Rec[i].Name == name {
+			return v.Rec[i].Cell
+		}
+	}
+	return nil
+}
+
+// PutField sets (or appends) the cell for the named field and returns it.
+func (v *Value) PutField(name string, cell *Value) *Value {
+	for i := range v.Rec {
+		if v.Rec[i].Name == name {
+			v.Rec[i].Cell = cell
+			return cell
+		}
+	}
+	v.Rec = append(v.Rec, RecField{Name: name, Cell: cell})
+	return cell
 }
 
 type ValKind int
@@ -109,16 +142,14 @@ func (v Value) String() string {
 	case VKRecord:
 		var b strings.Builder
 		b.WriteString("(")
-		keys := make([]string, 0, len(v.Rec))
-		for k := range v.Rec {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for i, k := range keys {
+		fields := make([]RecField, len(v.Rec))
+		copy(fields, v.Rec)
+		sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
+		for i, f := range fields {
 			if i > 0 {
 				b.WriteString(",")
 			}
-			fmt.Fprintf(&b, "%s:%s", k, v.Rec[k].String())
+			fmt.Fprintf(&b, "%s:%s", f.Name, f.Cell.String())
 		}
 		b.WriteString(")")
 		return b.String()
@@ -509,12 +540,12 @@ func (vm *VM) Step(frame *Frame) bool {
 		if base < 0 {
 			base = 0
 		}
-		rec := make(map[string]*Value, n+1)
+		rec := make([]RecField, 0, n+1)
 		tag := Value{Kind: VKStr, Str: ins.S}
-		rec["__tag"] = &tag
+		rec = append(rec, RecField{Name: "__tag", Cell: &tag})
 		for i := 0; i < n; i++ {
 			v := vm.Stack[base+i]
-			rec[fmt.Sprintf("__%d", i)] = &v
+			rec = append(rec, RecField{Name: fmt.Sprintf("__%d", i), Cell: &v})
 		}
 		vm.Stack = vm.Stack[:base]
 		vm.Stack = append(vm.Stack, Value{Kind: VKRecord, Rec: rec})
@@ -541,10 +572,9 @@ func (vm *VM) Step(frame *Frame) bool {
 			vm.Halted = true
 			return false
 		}
-		fc, ok := r.Cell.Rec[ins.S]
-		if !ok {
-			fc = &Value{}
-			r.Cell.Rec[ins.S] = fc
+		fc := r.Cell.Field(ins.S)
+		if fc == nil {
+			fc = r.Cell.PutField(ins.S, &Value{})
 		}
 		vm.Stack = append(vm.Stack, Value{Kind: VKPtr, Cell: fc})
 		return true
@@ -1080,7 +1110,7 @@ func (vm *VM) Step(frame *Frame) bool {
 			return false
 		}
 		vm.Stack = append(vm.Stack, Value{Kind: VKPtr, Ptr: int64(len(vm.Heap))})
-		vm.Heap = append(vm.Heap, Value{Kind: VKRecord, Rec: map[string]*Value{}})
+		vm.Heap = append(vm.Heap, Value{Kind: VKRecord})
 		return true
 	case OPDeref:
 		p := vm.pop()
@@ -1195,10 +1225,10 @@ func deepCopy(v Value) Value {
 		if v.Rec == nil {
 			return v
 		}
-		cp := make(map[string]*Value, len(v.Rec))
-		for k, fv := range v.Rec {
-			nc := deepCopy(*fv)
-			cp[k] = &nc
+		cp := make([]RecField, len(v.Rec))
+		for i, f := range v.Rec {
+			nc := deepCopy(*f.Cell)
+			cp[i] = RecField{Name: f.Name, Cell: &nc}
 		}
 		v.Rec = cp
 		return v
@@ -1418,7 +1448,7 @@ func selfTypeName(self Value) string {
 		rec = *self.Cell
 	}
 	if rec.Kind == VKRecord {
-		if t, ok := rec.Rec["__type"]; ok && t != nil {
+		if t := rec.Field("__type"); t != nil {
 			return strings.ToLower(t.Str)
 		}
 	}

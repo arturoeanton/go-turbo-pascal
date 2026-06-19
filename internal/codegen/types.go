@@ -298,13 +298,13 @@ func (g *gen) resolveObject(o *ast.ObjectType) *typeInfo {
 // classInstanceTemplate builds the zero record value for a class instance
 // (used by Create before allocating it on the heap).
 func (g *gen) classInstanceTemplate(ti *typeInfo) ir.Value {
-	rec := map[string]*ir.Value{}
+	rec := make([]ir.RecField, 0, len(ti.fields)+1)
 	for _, f := range ti.fields {
 		z := g.zeroTemplate(f.ti)
-		rec[f.lname] = &z
+		rec = append(rec, ir.RecField{Name: f.lname, Cell: &z})
 	}
 	tt := ir.Value{Kind: ir.VKStr, Str: ti.objName}
-	rec["__type"] = &tt
+	rec = append(rec, ir.RecField{Name: "__type", Cell: &tt})
 	return ir.Value{Kind: ir.VKRecord, Rec: rec}
 }
 
@@ -383,24 +383,24 @@ func (g *gen) zeroTemplate(ti *typeInfo) ir.Value {
 	case ktSet:
 		return ir.Value{Kind: ir.VKSet}
 	case ktRecord:
-		rec := map[string]*ir.Value{}
+		rec := make([]ir.RecField, 0, len(ti.fields))
 		for _, f := range ti.fields {
 			z := g.zeroTemplate(f.ti)
-			rec[f.lname] = &z
+			rec = append(rec, ir.RecField{Name: f.lname, Cell: &z})
 		}
 		return ir.Value{Kind: ir.VKRecord, Rec: rec}
 	case ktObject:
 		if ti.isClass {
 			return ir.Value{Kind: ir.VKPtr} // a class variable is a nil reference
 		}
-		rec := map[string]*ir.Value{}
+		rec := make([]ir.RecField, 0, len(ti.fields)+1)
 		for _, f := range ti.fields {
 			z := g.zeroTemplate(f.ti)
-			rec[f.lname] = &z
+			rec = append(rec, ir.RecField{Name: f.lname, Cell: &z})
 		}
 		// Runtime type tag for dynamic dispatch.
 		tt := ir.Value{Kind: ir.VKStr, Str: ti.objName}
-		rec["__type"] = &tt
+		rec = append(rec, ir.RecField{Name: "__type", Cell: &tt})
 		return ir.Value{Kind: ir.VKRecord, Rec: rec}
 	case ktArray:
 		n := ti.hi - ti.lo + 1
