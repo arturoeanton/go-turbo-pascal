@@ -57,6 +57,33 @@ for _, row := range rows {
 Este es el patrón recomendado para el rendimiento; consulta los
 [benchmarks](estado.md) (el bucle baja a ~12 asignaciones/ejecución).
 
+## Cancelación y lectura de resultados
+
+Para ejecución acotada por petición, `RunContext` aborta la ejecución poco
+después de que el contexto se cancela (o vence su deadline) y devuelve
+`ctx.Err()`:
+
+```go
+ctx, cancel := context.WithTimeout(r.Context(), 200*time.Millisecond)
+defer cancel()
+if err := eng.RunContext(ctx, tenantScript); err != nil {
+    // errors.Is(err, context.DeadlineExceeded) cuando expiró el tiempo
+}
+```
+
+`Script.RunContext(ctx)` hace lo mismo para un script compilado. La cancelación
+es cooperativa: la VM consulta el contexto con la misma cadencia regulada que
+`MaxDuration`.
+
+Para extraer un valor sin enlazar previamente una variable, `Get` lee una global
+del script por nombre en un puntero de Go tipado después de una ejecución:
+
+```go
+eng.Run(`program P; var total: Currency; begin total := 19.99 + 5.01 end.`)
+var total float64
+eng.Get("total", &total) // total == 25
+```
+
 ## Enlazar variables de Go
 
 Pasa un **puntero** para lectura/escritura; un valor para solo lectura.

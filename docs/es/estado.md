@@ -1,6 +1,6 @@
 # Estado, validación y viabilidad
 
-go-turbo-pascal está en **v1.2.0**: el motor embebible y su API pública son
+go-turbo-pascal está en **v1.4.0**: el motor embebible y su API pública son
 estables (congelada desde v1.0.0; ver [api.md](api.md)). Esta página registra cómo se
 validó la versión, el panorama honesto de rendimiento (incluida una comparación
 directa contra goja) y las limitaciones conocidas que permanecen.
@@ -93,6 +93,23 @@ dependencias**.
   deliberado por ahora.
 - Una **IDE TUI** nostálgica al estilo Turbo Pascal no está planeada; `internal/tv` y
   `cmd/turbo` permanecen como stubs legacy.
+
+## Ideas diferidas (para revisar otro día)
+
+Estas se consideraron y deliberadamente no se hicieron; se registran aquí para
+que la decisión sea explícita:
+
+- **`inherited` dentro de una expresión** — un cambio de codegen (esfuerzo
+  medio), la única laguna real de la POO de TP7.
+- **Slots posicionales de record/global** — ahorraría más memoria/tiempo pero
+  necesita un registro compartido de disposición de tipos a través de
+  codegen/VM/snapshot; riesgo de cobertura de offsets incompleta.
+- **`Value` más pequeño (separación hot/cold)** — rechazado: añade una
+  asignación por cada valor de record/array, empeorando el perfil de memoria que
+  es la ventaja del proyecto.
+- **Tag de despacho de operadores / VM de registros / cerrar la brecha de tiempo
+  bruto con goja** — gran esfuerzo; las mediciones muestran que el decode de
+  operadores no es el cuello de botella.
 
 ## Veredicto
 

@@ -1,6 +1,6 @@
 # Status, validation and viability
 
-go-turbo-pascal is at **v1.2.0**: the embeddable engine and its public API are
+go-turbo-pascal is at **v1.4.0**: the embeddable engine and its public API are
 stable (frozen since v1.0.0; see [api.md](api.md)). This page records how the
 release was validated, the honest performance picture (including a direct
 comparison against goja), and the known limitations that remain.
@@ -93,6 +93,21 @@ dependencies**.
   for now.
 - A nostalgic Turbo Pascal-style **TUI IDE** is not planned; `internal/tv` and
   `cmd/turbo` remain legacy stubs.
+
+## Deferred ideas (to revisit another day)
+
+These were considered and intentionally not done; recorded here so the decision
+is explicit:
+
+- **`inherited` inside an expression** — a codegen change (medium effort), the
+  one real TP7 OOP gap.
+- **Positional record/global slots** — would shave more memory/time but needs a
+  shared type-layout registry across codegen/VM/snapshot; risk of incomplete
+  offset coverage.
+- **Smaller `Value` (hot/cold split)** — rejected: it adds an allocation per
+  record/array value, regressing the memory profile that is the project's edge.
+- **Operator-dispatch tag / register VM / closing the raw-time gap with goja** —
+  large effort; measurements show operator decode is not the bottleneck.
 
 ## Verdict
 

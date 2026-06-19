@@ -5,6 +5,55 @@ This project follows [Semantic Versioning](https://semver.org/): from v1.0.0 on,
 the public API of `pkg/vmpas` is stable within each major series (see
 [docs/en/api.md](docs/en/api.md)).
 
+## [1.4.0] — Context cancellation and typed results
+### Added
+- `Engine.RunContext(ctx, code)` / `Script.RunContext(ctx)`: cooperative
+  cancellation — the run aborts shortly after the context is cancelled or its
+  deadline passes and returns `ctx.Err()`.
+- `Engine.Get(name, out)`: read a script global by name into a typed Go pointer
+  after a run, without pre-binding a variable.
+### Tests
+- WrapSQLDB / the *sql.DB adapter (via a stdlib-only fake driver) and the
+  internal line debugger.
+### Notes
+- Evaluated an operator-dispatch tag (P3) but reverted it: measured no gain on
+  the arithmetic benchmarks (the hot path is dominated by dispatch and Value
+  copying, not operator decode).
+
+## [1.3.1] — Robustness, micro-perf and cleanup
+### Changed
+- Snapshot restore validates frame PCs and bounds-checks frame indices; OPMk*
+  clamp negative element counts — corrupt input is a clean error, not a panic.
+- Micro-perf: cache `Deadline.IsZero()` per run; ADT field names from a table
+  (no `Sprintf`); `selfTypeName` lowercases without allocating on the common path.
+- Removed the dead `RandomState` field; RTL `New`/`GetMem` allocate via a new
+  `AllocHeap` (count against `MaxHeap`, return a valid heap index).
+
+## [1.3.0] — Typed errors, builtin cache, more guards
+### Added
+- `vmpas.RuntimeError` (Code + human-readable message, `errors.As`-friendly).
+### Changed
+- `OPCallBuiltin` caches its resolution per VM (skips the map lookup on repeats).
+- `formatCurrency` no longer emits `-0.00`.
+### Tests
+- Money-format edges, record field helpers, set-copy isolation.
+
+## [1.2.2] — Engine hardening + adoption polish
+### Changed
+- Output cap enforced at write time (a single oversized write can no longer
+  exceed `MaxOutput`); stack-consuming opcodes and out-of-range pointer deref
+  return a clean runtime error instead of panicking; `Http*` builtins are
+  time-boxed (honor `MaxDuration`, else 30s).
+### Added
+- README install line + pkg.go.dev badge; runnable Example functions for struct
+  binding, RunSandboxed, Analyze and durable run/resume; examples translated to
+  English.
+
+## [1.2.1] — Documentation current through v1.2.0
+### Changed
+- Rewrote the CHANGELOG and the status/benchmark pages with measured numbers
+  (EN + ES).
+
 ## [1.2.0] — Record representation: association slice
 ### Changed
 - Records use a `[]RecField` association slice instead of `map[string]*Value`.
@@ -86,6 +135,11 @@ the public API of `pkg/vmpas` is stable within each major series (see
   HTTP/SQL/JSON integration, `Currency` type, business stdlib (N1–N4).
 - Tooling: IDE-grade diagnostics; LSP/DAP and editor plugins.
 
+[1.4.0]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.3.1...v1.4.0
+[1.3.1]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.3.0...v1.3.1
+[1.3.0]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.2.2...v1.3.0
+[1.2.2]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.2.1...v1.2.2
+[1.2.1]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/arturoeanton/go-turbo-pascal/compare/v1.0.2...v1.1.0
