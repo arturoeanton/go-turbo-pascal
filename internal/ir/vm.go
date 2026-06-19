@@ -16,6 +16,24 @@ import (
 // reused by a different VM/engine.
 var builtinGenSeq int64
 
+// adtFieldNamesTable holds the positional field names "__0".."__63" for tagged
+// (sum-type) records, so building one avoids an fmt.Sprintf per field. It is
+// read-only after init (concurrency-safe). Larger arities fall back to Sprintf.
+var adtFieldNamesTable = func() [64]string {
+	var a [64]string
+	for i := range a {
+		a[i] = fmt.Sprintf("__%d", i)
+	}
+	return a
+}()
+
+func adtFieldName(i int) string {
+	if i >= 0 && i < len(adtFieldNamesTable) {
+		return adtFieldNamesTable[i]
+	}
+	return fmt.Sprintf("__%d", i)
+}
+
 // Value is a runtime value manipulated by the IR VM. The VM uses a
 // tagged-union style with a small set of types that match the TP7 /
 // BP7 categories: integers (16/32 bit), reals (TP real, IEEE single /
@@ -218,6 +236,7 @@ type VM struct {
 	MaxOutput    int       // max output bytes (0 = unlimited)
 	MaxCallDepth int       // max call-stack depth (0 = unlimited)
 	Deadline     time.Time // wall-clock deadline (zero = none)
+	hasDeadline  bool      // cached !Deadline.IsZero(), set at run start
 	RandomState  uint32
 	// Deterministic, when set, makes execution fully reproducible: Randomize
 	// seeds the RNG from DetRandSeed instead of the host entropy source, so the
@@ -458,7 +477,7 @@ func (vm *VM) Step(frame *Frame) bool {
 	}
 	// Wall-clock deadline: checked every 4096 steps to keep time.Now() out
 	// of the per-instruction hot path.
-	if !vm.Deadline.IsZero() && vm.Steps&0xFFF == 0 && time.Now().After(vm.Deadline) {
+	if vm.hasDeadline && vm.Steps&0xFFF == 0 && time.Now().After(vm.Deadline) {
 		vm.RuntimeError = 200
 		vm.Halted = true
 		return false
@@ -570,7 +589,7 @@ func (vm *VM) Step(frame *Frame) bool {
 		rec = append(rec, RecField{Name: "__tag", Cell: &tag})
 		for i := 0; i < n; i++ {
 			v := vm.Stack[base+i]
-			rec = append(rec, RecField{Name: fmt.Sprintf("__%d", i), Cell: &v})
+			rec = append(rec, RecField{Name: adtFieldName(i), Cell: &v})
 		}
 		vm.Stack = vm.Stack[:base]
 		vm.Stack = append(vm.Stack, Value{Kind: VKRecord, Rec: rec})
@@ -1344,6 +1363,7 @@ func (vm *VM) Run() {
 	if vm.Output != nil {
 		vm.Output.Max = vm.MaxOutput // enforce the output cap at write time
 	}
+	vm.hasDeadline = !vm.Deadline.IsZero()
 	// Initialize globals.
 	for _, m := range vm.Program.Modules {
 		for _, g := range m.Globals {
@@ -1499,6 +1519,7 @@ func (vm *VM) RunResume() {
 	if vm.Output != nil {
 		vm.Output.Max = vm.MaxOutput
 	}
+	vm.hasDeadline = !vm.Deadline.IsZero()
 	vm.Halted = false
 	vm.Suspended = false
 	for !vm.Halted && len(vm.CallStack) > 0 {
@@ -1515,10 +1536,27 @@ func selfTypeName(self Value) string {
 	}
 	if rec.Kind == VKRecord {
 		if t := rec.Field("__type"); t != nil {
-			return strings.ToLower(t.Str)
+			return asciiLower(t.Str) // __type is stored lowercase; no alloc on the common path
 		}
 	}
 	return ""
+}
+
+// asciiLower lowercases an ASCII string without allocating when it is already
+// lowercase (the common case for the runtime __type tag).
+func asciiLower(s string) string {
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c >= 'A' && c <= 'Z' {
+			b := []byte(s)
+			for j := i; j < len(b); j++ {
+				if b[j] >= 'A' && b[j] <= 'Z' {
+					b[j] += 'a' - 'A'
+				}
+			}
+			return string(b)
+		}
+	}
+	return s
 }
 
 // lookupMethod resolves a method through an object type's (flattened) vtable.
