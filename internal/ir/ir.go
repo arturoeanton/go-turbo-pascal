@@ -97,10 +97,10 @@ const (
 	OPMkTagged // pop A payloads, push a tagged record {__tag:S, __0..__(A-1)}
 	OPRecover  // push the active panic value and clear it (or nil if none)
 	// Concurrency (cooperative scheduler): spawn and channels.
-	OPSpawn     // pop a closure value, start it as a new fiber
-	OPMakeChan  // pop buffer size (A=1) or none (A=0), push a new channel
-	OPChanSend  // pop value, pop channel; send (may park the fiber)
-	OPChanRecv  // pop channel; push received value (may park the fiber)
+	OPSpawn      // pop a closure value, start it as a new fiber
+	OPMakeChan   // pop buffer size (A=1) or none (A=0), push a new channel
+	OPChanSend   // pop value, pop channel; send (may park the fiber)
+	OPChanRecv   // pop channel; push received value (may park the fiber)
 	OPChanClose  // pop channel; close it
 	OPToCurrency // pop a numeric value, push its Currency (fixed-point) form
 )
@@ -174,6 +174,12 @@ type Instr struct {
 	Func  *Function
 	Label string
 	Str   string
+	// cb caches the resolved builtin for OPCallBuiltin, valid only while cbGen
+	// matches the executing VM's builtinGen (each VM has a unique generation, so
+	// a builtin closure from one engine is never reused by another). Runtime-only
+	// cache: not set by codegen and not part of the program fingerprint.
+	cb    Builtin
+	cbGen int64
 }
 
 // Module is a compiled unit or program.

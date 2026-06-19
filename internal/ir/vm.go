@@ -7,8 +7,14 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 )
+
+// builtinGenSeq hands each VM a unique builtin-table generation so a cached
+// builtin (possibly a per-engine closure) in a shared instruction is never
+// reused by a different VM/engine.
+var builtinGenSeq int64
 
 // Value is a runtime value manipulated by the IR VM. The VM uses a
 // tagged-union style with a small set of types that match the TP7 /
@@ -226,11 +232,13 @@ type VM struct {
 	Suspended bool
 	Trace     bool
 	Builtins  map[string]Builtin
-	Args      []string
-	framePool []*Frame     // reusable call frames (reduces per-call allocations)
-	handlers  []tryHandler // active exception handlers (try/except/finally)
-	excValue  Value        // the value of the exception being propagated
-	excActive bool         // whether an exception is currently propagating
+	// builtinGen identifies this VM's builtin table for the OPCallBuiltin cache.
+	builtinGen int64
+	Args       []string
+	framePool  []*Frame     // reusable call frames (reduces per-call allocations)
+	handlers   []tryHandler // active exception handlers (try/except/finally)
+	excValue   Value        // the value of the exception being propagated
+	excActive  bool         // whether an exception is currently propagating
 	// Cooperative scheduler (spawn / channels). The fields above
 	// (Stack/CallStack/handlers/exc) are the *current* fiber's live execution
 	// state; switchTo saves/restores them. Globals/Heap/Builtins are shared.
@@ -429,6 +437,7 @@ func NewVM(p *Program) *VM {
 		Builtins:    map[string]Builtin{},
 		MaxSteps:    10000000,
 		RandomState: 1,
+		builtinGen:  atomic.AddInt64(&builtinGenSeq, 1),
 	}
 }
 
@@ -936,11 +945,20 @@ func (vm *VM) Step(frame *Frame) bool {
 		for i := n - 1; i >= 0; i-- {
 			args[i] = vm.pop()
 		}
-		fn, ok := vm.Builtins[ins.S]
-		if !ok {
-			vm.RuntimeError = 3
-			vm.Halted = true
-			return false
+		// Resolve the builtin once per VM and cache it in the instruction (keyed
+		// by this VM's generation), skipping the map lookup on later calls.
+		instr := &frame.Func.Code[frame.PC-1]
+		fn := instr.cb
+		if instr.cbGen != vm.builtinGen || fn == nil {
+			var ok bool
+			fn, ok = vm.Builtins[ins.S]
+			if !ok {
+				vm.RuntimeError = 3
+				vm.Halted = true
+				return false
+			}
+			instr.cb = fn
+			instr.cbGen = vm.builtinGen
 		}
 		r := fn(vm, args)
 		if vm.excActive {
@@ -1659,7 +1677,7 @@ func formatCurrency(scaled int64) string {
 		cents -= 100
 	}
 	sign := ""
-	if neg {
+	if neg && (units != 0 || cents != 0) { // avoid "-0.00"
 		sign = "-"
 	}
 	return fmt.Sprintf("%s%d.%02d", sign, units, cents)

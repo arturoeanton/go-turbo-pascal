@@ -250,6 +250,26 @@ begin
   end;
 end.`
 
+// builtinBenchSrc calls a builtin (Write) every iteration — the path the
+// OPCallBuiltin resolution cache optimizes.
+const builtinBenchSrc = `program B;
+var i: Integer;
+begin
+  for i := 1 to 500 do Write('x');
+end.`
+
+func BenchmarkBuiltinCallLoop(b *testing.B) {
+	e := NewWith(Capabilities{MaxOutput: 1 << 20})
+	sc, err := e.Compile(builtinBenchSrc)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for n := 0; n < b.N; n++ {
+		_ = sc.Run()
+	}
+}
+
 func BenchmarkRecordHeavy(b *testing.B) {
 	e := New()
 	sc, err := e.Compile(recordBenchSrc)
