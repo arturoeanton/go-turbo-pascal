@@ -1,9 +1,9 @@
 # Status, validation and viability
 
-go-turbo-pascal is at **v1.0.0**: the embeddable engine and its API are stable.
-This page records how the release was validated, the honest performance picture
-(including a direct comparison against goja), and the known limitations that
-remain.
+go-turbo-pascal is at **v1.2.0**: the embeddable engine and its public API are
+stable (frozen since v1.0.0; see [api.md](api.md)). This page records how the
+release was validated, the honest performance picture (including a direct
+comparison against goja), and the known limitations that remain.
 
 ## Validation (all green)
 
@@ -19,21 +19,28 @@ remain.
 
 ### Performance (compile once, run many)
 
+Measured with `go test -bench -benchmem` (numbers vary by machine; these are
+indicative, Apple Silicon):
+
 | Benchmark | Result |
 |---|---|
-| Loop sum 1..10000 | ~2.5 ms/op (~36M instr/s), 35 allocs |
-| recursive `fib(20)` | ~4.8 ms/op, **88 allocs** (previously ~65k) |
-| `vmpas` recompiles each Run | ~46 µs/op, 265 allocs |
-| `vmpas` compile-once / run-many | ~34 µs/op, 94 allocs |
+| `vmpas` compile-once / run-many (sum 1..100) | ~24 µs/op, **12 allocs** |
+| Sum 1..1000 | ~230 µs/op, **12 allocs**, ~1.9 KB |
+| recursive `fib(20)` | ~4.0 ms/op, **65 allocs** |
+| record-heavy loop (build/copy/read) | ~840 µs/op, ~7.5k allocs |
 
-Optimizations applied (A1/A2/A4):
+Optimizations applied over the 1.x series:
 - **compile-once / run-many** in `vmpas` (`Engine.Compile` → `Script.Run`).
-- **frame pool** + argument binding via stack slice in the VM
-  (`fib(20)` dropped from ~65k to ~88 allocs).
+- **frame pool** + argument binding via a stack slice in the VM.
 - **builtins cache** per engine (the RTL is not re-registered on each run): the
-  loop dropped to **12 allocs**.
+  loop runs at **12 allocs**.
+- **v1.1.1** — O(n) builtin-argument marshalling and an integer fast path in the
+  binary operators (~5% on scalar loops).
+- **v1.2.0** — records use an association slice instead of a map, so field access
+  avoids map hashing and a per-record allocation: record-heavy code is ~7%
+  faster with ~12% less memory and ~17% fewer allocations.
 
-### Direct benchmark vs goja (A4)
+### Direct benchmark vs goja
 
 `internal/bench` is a **separate Go module** (so goja does not enter the main
 `go.mod`, which stays zero-dependency). Run it with:
@@ -42,15 +49,16 @@ fresh context per run:
 
 | Benchmark | vmpas | goja |
 |---|---|---|
-| Sum 1..1000 | ~252 µs, **12 allocs** | ~157 µs, 3744 allocs |
-| `fib(20)` | ~5.0 ms, 65 allocs | ~1.5 ms, 72 allocs |
+| Sum 1..1000 | ~230 µs, **12 allocs**, ~1.9 KB | ~157 µs, 3744 allocs, ~112 KB |
+| `fib(20)` | ~4.0 ms, 65 allocs | ~1.5 ms, 72 allocs |
 
-Honest read: vmpas **allocates far less memory** (12 vs 3744 allocs in the loop),
-while **goja is ~1.6–3.3× faster on time**. goja is a heavily optimized JS
-bytecode interpreter; the vmpas VM uses a tagged union (`Value`) with boxing.
-Closing the time gap would require optimizing the interpreter loop (dispatch,
-avoiding `Value` boxing, possibly a register-based design) — a major effort, not
-just wiring. Where vmpas adds value is elsewhere: **strong typing before
+Honest read: vmpas **allocates dramatically less memory** (12 vs 3744 allocs and
+~59× fewer bytes in the loop), while **goja is ~1.5–2.6× faster on raw time**.
+goja is a heavily optimized JS bytecode interpreter; the vmpas VM uses a tagged
+union (`Value`) with boxing. Closing the time gap further would mean optimizing
+the interpreter loop (dispatch, avoiding `Value` boxing, possibly a
+register-based design) — a major effort, not just wiring, and a deliberate
+non-goal for now. Where vmpas adds value is elsewhere: **strong typing before
 execution**, the **capability sandbox**, durable execution and **zero
 dependencies**.
 
@@ -80,8 +88,9 @@ dependencies**.
 - `inherited` works as a statement but not yet inside an expression
   (`x := inherited Foo + y`). See the [compatibility matrix](compatibility.md).
 - **Performance vs goja**: vmpas allocates far less memory, while goja is
-  ~1.6–3.3× faster in raw time (see the benchmark above). Closing the time gap
-  would mean reworking the interpreter dispatch — a deliberate non-goal for v1.0.0.
+  ~1.5–2.6× faster in raw time (see the benchmark above). Closing the time gap
+  further would mean reworking the interpreter dispatch — a deliberate non-goal
+  for now.
 - A nostalgic Turbo Pascal-style **TUI IDE** is not planned; `internal/tv` and
   `cmd/turbo` remain legacy stubs.
 

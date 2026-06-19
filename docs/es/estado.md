@@ -1,9 +1,9 @@
 # Estado, validación y viabilidad
 
-go-turbo-pascal está en **v1.0.0**: el motor embebible y su API son estables.
-Esta página registra cómo se validó la versión, el panorama honesto de rendimiento
-(incluida una comparación directa contra goja) y las limitaciones conocidas que
-permanecen.
+go-turbo-pascal está en **v1.2.0**: el motor embebible y su API pública son
+estables (congelada desde v1.0.0; ver [api.md](api.md)). Esta página registra cómo se
+validó la versión, el panorama honesto de rendimiento (incluida una comparación
+directa contra goja) y las limitaciones conocidas que permanecen.
 
 ## Validación (todo verde)
 
@@ -19,21 +19,28 @@ permanecen.
 
 ### Rendimiento (compilar una vez, ejecutar muchas)
 
+Medido con `go test -bench -benchmem` (los números varían según la máquina; estos
+son indicativos, Apple Silicon):
+
 | Benchmark | Resultado |
 |---|---|
-| Loop suma 1..10000 | ~2.5 ms/op (~36M instr/s), 35 allocs |
-| `fib(20)` recursivo | ~4.8 ms/op, **88 allocs** (antes ~65k) |
-| `vmpas` recompila cada Run | ~46 µs/op, 265 allocs |
-| `vmpas` compile-once / run-many | ~34 µs/op, 94 allocs |
+| `vmpas` compile-once / run-many (suma 1..100) | ~24 µs/op, **12 allocs** |
+| Suma 1..1000 | ~230 µs/op, **12 allocs**, ~1.9 KB |
+| `fib(20)` recursivo | ~4.0 ms/op, **65 allocs** |
+| loop intensivo en records (construir/copiar/leer) | ~840 µs/op, ~7.5k allocs |
 
-Optimizaciones aplicadas (A1/A2/A4):
+Optimizaciones aplicadas a lo largo de la serie 1.x:
 - **compile-once / run-many** en `vmpas` (`Engine.Compile` → `Script.Run`).
-- **pool de frames** + binding de argumentos por slice del stack en la VM
-  (`fib(20)` bajó de ~65k a ~88 allocs).
+- **pool de frames** + binding de argumentos por slice del stack en la VM.
 - **caché de builtins** por engine (no se re-registra la RTL en cada run): el
-  loop bajó a **12 allocs**.
+  loop corre a **12 allocs**.
+- **v1.1.1** — marshalling O(n) de los argumentos de los builtins y un camino rápido
+  para enteros en los operadores binarios (~5% en loops escalares).
+- **v1.2.0** — los records usan un slice de asociación en lugar de un map, así el acceso
+  a campos evita el hashing del map y una asignación por record: el código intensivo en
+  records es ~7% más rápido con ~12% menos memoria y ~17% menos asignaciones.
 
-### Benchmark directo vs goja (A4)
+### Benchmark directo vs goja
 
 `internal/bench` es un **módulo Go aparte** (así goja no entra al `go.mod`
 principal, que queda con cero dependencias). Correr con:
@@ -42,17 +49,18 @@ contexto fresco por run:
 
 | Benchmark | vmpas | goja |
 |---|---|---|
-| Suma 1..1000 | ~252 µs, **12 allocs** | ~157 µs, 3744 allocs |
-| `fib(20)` | ~5.0 ms, 65 allocs | ~1.5 ms, 72 allocs |
+| Suma 1..1000 | ~230 µs, **12 allocs**, ~1.9 KB | ~157 µs, 3744 allocs, ~112 KB |
+| `fib(20)` | ~4.0 ms, 65 allocs | ~1.5 ms, 72 allocs |
 
-Lectura honesta: vmpas **asigna mucha menos memoria** (12 vs 3744 allocs en el
-loop), mientras que **goja es ~1.6–3.3× más rápido en tiempo**. goja es un
-intérprete de bytecode JS muy optimizado; la VM de vmpas usa una unión etiquetada
-(`Value`) con boxing. Cerrar la brecha de tiempo requeriría optimizar el bucle
-del intérprete (despacho, evitar el boxing de `Value`, posible diseño por
-registros) — un trabajo mayor, no de wiring. Donde vmpas aporta valor es en otro
-lado: **tipado fuerte previo a ejecutar**, el **sandbox de capacidades**,
-ejecución durable y **cero dependencias**.
+Lectura honesta: vmpas **asigna muchísima menos memoria** (12 vs 3744 allocs y
+~59× menos bytes en el loop), mientras que **goja es ~1.5–2.6× más rápido en tiempo**.
+goja es un intérprete de bytecode JS muy optimizado; la VM de vmpas usa una unión
+etiquetada (`Value`) con boxing. Cerrar aún más la brecha de tiempo requeriría
+optimizar el bucle del intérprete (despacho, evitar el boxing de `Value`, posible
+diseño por registros) — un trabajo mayor, no de wiring, y un no-objetivo deliberado
+por ahora. Donde vmpas aporta valor es en otro lado: **tipado fuerte previo a
+ejecutar**, el **sandbox de capacidades**, ejecución durable y **cero
+dependencias**.
 
 ## (A) Pascal embebido en Go — entregado
 
@@ -80,8 +88,9 @@ ejecución durable y **cero dependencias**.
 - `inherited` funciona como sentencia pero todavía no dentro de una expresión
   (`x := inherited Foo + y`). Ver la [matriz de compatibilidad](compatibility.md).
 - **Rendimiento vs goja**: vmpas asigna mucha menos memoria, mientras que goja es
-  ~1.6–3.3× más rápido en tiempo bruto (ver el benchmark anterior). Cerrar la brecha
-  de tiempo supondría rehacer el despacho del intérprete — un no-objetivo deliberado para v1.0.0.
+  ~1.5–2.6× más rápido en tiempo bruto (ver el benchmark anterior). Cerrar aún más la
+  brecha de tiempo supondría rehacer el despacho del intérprete — un no-objetivo
+  deliberado por ahora.
 - Una **IDE TUI** nostálgica al estilo Turbo Pascal no está planeada; `internal/tv` y
   `cmd/turbo` permanecen como stubs legacy.
 
