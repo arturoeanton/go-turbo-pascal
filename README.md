@@ -70,6 +70,23 @@ If raw single-threaded throughput is your only metric, a mature JavaScript or Lu
 engine will likely be faster; vmpas trades a little speed for typing, isolation
 and durability. The honest numbers are in [status & benchmarks](docs/en/status.md).
 
+## Demo: a visual durable-workflow builder
+
+A small RAD app built on `pkg/vmpas` ([`examples/rad`](examples/rad)): drag boxes
+onto a canvas to compose a flow, where **each box is editable Pascal** and you can
+define your own reusable components. An **Approval** box uses durable execution —
+the run **pauses** (`Suspend`), its state is persisted, and it **resumes** on a
+fresh engine after a human Approve/Reject. Boxes light up live as they execute
+(via a bound `Trace` callback), and flows, run history and paused state are stored
+in **SQLite**. Example boxes also show the Go↔Pascal **SQL** and **HTTP**
+integration.
+
+![RAD durable workflow builder](screenshot/rad-workflow.png)
+
+```bash
+cd examples/rad && go run .   # then open http://localhost:8080
+```
+
 ## Quickstart
 
 Embed Pascal in Go ([`examples/embed`](examples/embed/main.go)):

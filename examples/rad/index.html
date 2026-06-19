@@ -30,15 +30,19 @@
   .node .hd { padding: 6px 9px; border-radius: 8px 8px 0 0; color: #fff; font-weight: 600; cursor: grab; display: flex; justify-content: space-between; align-items: center; }
   .node .hd .x { cursor: pointer; opacity: .85; }
   .node .bd { padding: 6px; }
-  .node textarea { width: 100%; min-height: 70px; font-family: ui-monospace, monospace; font-size: 11px; border: 1px solid #d7dbe0; border-radius: 5px; padding: 6px; }
+  .node textarea { width: 100%; height: 100px; font-family: ui-monospace, monospace; font-size: 11px; border: 1px solid #d7dbe0; border-radius: 5px; padding: 6px; resize: vertical; }
+  .node .CodeMirror { height: 100px; border: 1px solid #d7dbe0; border-radius: 5px; font-size: 11px; }
   .node[data-status="done"] { box-shadow: 0 0 0 2px #1f9d57; }
   .node[data-status="paused"] { box-shadow: 0 0 0 3px #f59e0b; animation: pulse 1.1s ease-in-out infinite; }
   @keyframes pulse { 0%,100% { box-shadow: 0 0 0 3px #f59e0b; } 50% { box-shadow: 0 0 0 6px #fde68a; } }
   #side { border-left: 1px solid #d7dbe0; background: #fff; display: flex; flex-direction: column; }
   #side h2 { font-size: 11px; text-transform: uppercase; color: #6b7280; margin: 10px 12px 4px; display: flex; justify-content: space-between; align-items: center; }
   #side h2 button { padding: 3px 8px; font-size: 11px; }
-  #side .CodeMirror { height: 200px; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; font-size: 12px; }
-  #prog.fb { display: block; width: 100%; height: 200px; font-family: ui-monospace, monospace; border: 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; padding: 8px; }
+  #progPane { height: 230px; min-height: 80px; border-top: 1px solid #e5e7eb; }
+  #progPane .CodeMirror { height: 100%; font-size: 12px; }
+  #prog.fb { display: block; width: 100%; height: 100%; font-family: ui-monospace, monospace; border: 0; padding: 8px; }
+  #splitter { height: 7px; cursor: row-resize; background: #e5e7eb; border-bottom: 1px solid #d7dbe0; }
+  #splitter:hover { background: #cbd5e1; }
   #out { flex: 1; overflow: auto; padding: 10px 12px; white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: 12px; }
   #status { padding: 8px 12px; border-top: 1px solid #e5e7eb; }
   .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
@@ -75,7 +79,8 @@
 
   <div id="side">
     <h2><span>Composed program</span><button class="alt" id="recompose">↻ from boxes</button></h2>
-    <textarea id="prog"></textarea>
+    <div id="progPane"><textarea id="prog"></textarea></div>
+    <div id="splitter" title="drag to resize"></div>
     <h2>Output</h2>
     <div id="out">Run the flow to see output…</div>
     <div id="status"></div>
@@ -96,11 +101,11 @@
 function makeEditor(ta, opts) {
   opts = opts || {};
   if (window.CodeMirror) {
-    const cm = CodeMirror.fromTextArea(ta, { mode: "text/x-pascal", lineNumbers: !!opts.lineNumbers, readOnly: !!opts.readOnly, viewportMargin: Infinity });
-    return { get: () => cm.getValue(), set: v => cm.setValue(v), change: f => cm.on("change", f) };
+    const cm = CodeMirror.fromTextArea(ta, { mode: "text/x-pascal", lineNumbers: !!opts.lineNumbers, readOnly: !!opts.readOnly });
+    return { get: () => cm.getValue(), set: v => cm.setValue(v), change: f => cm.on("change", f), refresh: () => cm.refresh() };
   }
   ta.classList.add("fb"); ta.readOnly = !!opts.readOnly;
-  return { get: () => ta.value, set: v => { ta.value = v; }, change: f => ta.addEventListener("input", f) };
+  return { get: () => ta.value, set: v => { ta.value = v; }, change: f => ta.addEventListener("input", f), refresh: () => {} };
 }
 
 // ---- component library (palette), persisted in the browser ------------------
@@ -110,6 +115,8 @@ const BUILTIN = [
   { name: "Threshold",    color: "#b8860b", code: "if amount <= 1000.00 then\n  begin outcome := 'auto-approved'; WriteLn('Auto-approved'); Halt end;" },
   { name: "Approval",     color: "#c0392b", code: "WriteLn('Awaiting approval...');\nSuspend('approval');\nif not approved then\n  begin outcome := 'rejected'; WriteLn('Rejected'); Halt end;" },
   { name: "Set approved", color: "#2d6cdf", code: "outcome := 'approved';\nWriteLn('Approved');" },
+  { name: "DB: list users", color: "#0d9488", code: "if DbOpen('SELECT id, name FROM users') then\n  while not DbEof do\n  begin WriteLn(DbFieldInt(0), ': ', DbFieldStr(1)); DbNext end;\nDbClose;" },
+  { name: "HTTP: fetch", color: "#7c3aed", code: "outcome := HttpGet('http://localhost:8080/demo/api');\nWriteLn('HTTP status ', HttpLastStatus);\nWriteLn('name = ', JsonStr(outcome, 'name'));" },
   { name: "End",          color: "#0f172a", fixed: true, code: "WriteLn('Result: ', outcome);" },
 ];
 let components = [];
@@ -161,6 +168,15 @@ function setProgram(v) { settingProg = true; prog.set(v); settingProg = false; }
 function refreshProgram() { if (!manual) setProgram(compose()); }
 document.getElementById("recompose").onclick = () => { manual = false; setProgram(compose()); };
 
+// resizable split: drag the bar to grow/shrink the program editor
+(function () {
+  const bar = document.getElementById("splitter"), pane = document.getElementById("progPane");
+  let s = null;
+  bar.addEventListener("mousedown", e => { s = { y: e.clientY, h: pane.offsetHeight }; e.preventDefault(); });
+  window.addEventListener("mousemove", e => { if (!s) return; pane.style.height = Math.max(80, s.h + e.clientY - s.y) + "px"; prog.refresh && prog.refresh(); });
+  window.addEventListener("mouseup", () => { s = null; });
+})();
+
 // ---- rendering --------------------------------------------------------------
 function render() {
   const ids = new Set(nodes.map(n => n.id));
@@ -190,6 +206,7 @@ function buildNode(n) {
   const ed = makeEditor(ta, {});
   ed.set(n.code || "");
   ed.change(() => { n.code = ed.get(); refreshProgram(); });
+  requestAnimationFrame(() => ed.refresh()); // lay out CodeMirror now it's in the DOM
   return el;
 }
 function drawEdges() {
@@ -302,8 +319,8 @@ document.getElementById("load").onchange = e => loadFlow(e.target.value);
 
 // ---- boot -------------------------------------------------------------------
 loadComponents(); renderPalette();
-add("Start", 40, 20); add("Log", 40, 120); add("Threshold", 40, 240);
-add("Approval", 40, 380); add("Set approved", 40, 560); add("End", 40, 700);
+add("Start", 40, 20); add("Log", 40, 180); add("Threshold", 40, 340);
+add("Approval", 40, 500); add("Set approved", 40, 660); add("End", 40, 820);
 render(); loadFlowList(); loadRuns();
 </script>
 </body>

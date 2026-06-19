@@ -47,6 +47,9 @@ CREATE TABLE IF NOT EXISTS paused (id TEXT PRIMARY KEY, program TEXT, amount REA
 	if _, err := db.Exec(schema); err != nil {
 		log.Fatal(err)
 	}
+	// Demo data for the example "DB query" component (vmpas Db* via UseDB).
+	_, _ = db.Exec(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, name TEXT)`)
+	_, _ = db.Exec(`INSERT OR IGNORE INTO users(id,name) VALUES (1,'alice'),(2,'bob'),(3,'carol')`)
 }
 
 // caps: deterministic (reproducible persisted state) and bounded (the program is
@@ -55,6 +58,9 @@ func caps() vmpas.Capabilities {
 	c := vmpas.Sandboxed()
 	c.Deterministic, c.Seed = true, 1
 	c.MaxDuration = 2 * time.Second
+	// This is a local demo: allow the example DB and HTTP boxes to work. DB is
+	// wired to the local SQLite via UseDB; HTTP can reach the bundled /demo/api.
+	c.Database, c.Network = true, true
 	return c
 }
 
@@ -72,6 +78,7 @@ type resp struct {
 // bound Trace() callback the composed program calls at each box.
 func execute(program string, amount float64, approved bool, st *vmpas.State) (*vmpas.State, resp) {
 	eng := vmpas.NewWith(caps())
+	eng.UseDB(vmpas.WrapSQLDB(db)) // example "DB query" boxes run against the local SQLite
 	a, ap := amount, approved
 	_ = eng.Var("amount", &a)
 	_ = eng.Var("approved", &ap)
@@ -105,6 +112,12 @@ func logRun(flow string, r resp) {
 func main() {
 	initDB("rad.db")
 	http.Handle("/", http.FileServer(http.FS(assets)))
+
+	// Tiny bundled API for the example "HTTP fetch" component (offline-friendly).
+	http.HandleFunc("/demo/api", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"name":"vmpas","version":"1.4","items":[1,2,3]}`))
+	})
 
 	http.HandleFunc("/api/run", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
