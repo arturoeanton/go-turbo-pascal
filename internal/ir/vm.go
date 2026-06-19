@@ -883,9 +883,12 @@ func (vm *VM) Step(frame *Frame) bool {
 		vm.Stack = append(vm.Stack, r)
 		return true
 	case OPCallBuiltin:
-		args := []Value{}
-		for i := int(ins.A) - 1; i >= 0; i-- {
-			args = append([]Value{vm.pop()}, args...)
+		// Pop arguments into a single pre-sized slice (operands are on the stack
+		// in order arg0..argN-1, so the last popped is arg0).
+		n := int(ins.A)
+		args := make([]Value, n)
+		for i := n - 1; i >= 0; i-- {
+			args[i] = vm.pop()
 		}
 		fn, ok := vm.Builtins[ins.S]
 		if !ok {
@@ -1591,6 +1594,40 @@ func formatCurrency(scaled int64) string {
 }
 
 func binaryOp(op string, a, b Value) Value {
+	// Fast path: two plain integers (the common case). Skips the currency/set/
+	// real/string cascade. '/' is excluded because TP7 '/' is always real
+	// division (handled below); div/mod/bit-ops match the generic int path.
+	if a.Kind == VKInt && b.Kind == VKInt && op != "/" {
+		x, y := a.Int, b.Int
+		switch op {
+		case "+":
+			return Value{Kind: VKInt, Int: x + y}
+		case "-":
+			return Value{Kind: VKInt, Int: x - y}
+		case "*":
+			return Value{Kind: VKInt, Int: x * y}
+		case "div":
+			if y == 0 {
+				return Value{Kind: VKInt, Int: 0}
+			}
+			return Value{Kind: VKInt, Int: x / y}
+		case "mod":
+			if y == 0 {
+				return Value{Kind: VKInt, Int: 0}
+			}
+			return Value{Kind: VKInt, Int: x % y}
+		case "and":
+			return Value{Kind: VKInt, Int: x & y}
+		case "or":
+			return Value{Kind: VKInt, Int: x | y}
+		case "xor":
+			return Value{Kind: VKInt, Int: x ^ y}
+		case "shl":
+			return Value{Kind: VKInt, Int: x << uint(y)}
+		case "shr":
+			return Value{Kind: VKInt, Int: x >> uint(y)}
+		}
+	}
 	// Money arithmetic (exact fixed-point) takes precedence over the generic
 	// numeric paths, including '/'.
 	if a.Kind == VKCurrency || b.Kind == VKCurrency {
@@ -1680,6 +1717,27 @@ func binaryOp(op string, a, b Value) Value {
 }
 
 func compareOp(op string, a, b Value) Value {
+	// Fast path: two plain integers compare directly (avoids the cascade and the
+	// signum(x-y) subtraction, which is also overflow-safe).
+	if a.Kind == VKInt && b.Kind == VKInt {
+		x, y := a.Int, b.Int
+		var r bool
+		switch op {
+		case "=":
+			r = x == y
+		case "<>":
+			r = x != y
+		case "<":
+			r = x < y
+		case "<=":
+			r = x <= y
+		case ">":
+			r = x > y
+		case ">=":
+			r = x >= y
+		}
+		return Value{Kind: VKBool, Bool: r}
+	}
 	// Money comparison: compare the exact scaled integers.
 	if a.Kind == VKCurrency || b.Kind == VKCurrency {
 		x, y := currencyScaled(a), currencyScaled(b)
